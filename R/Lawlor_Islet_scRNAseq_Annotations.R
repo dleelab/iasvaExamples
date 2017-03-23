@@ -1,4 +1,4 @@
-#' Human islet single cell RNA-Seq data from Lawlor et. al. (2017)
+#' Human islet single cell RNA-Seq data from Lawlor et. al. (2016)
 #'
 #' Annotations describing the islet samples and experimental settings.
 #'

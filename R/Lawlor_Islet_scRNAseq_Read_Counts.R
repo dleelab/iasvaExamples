@@ -1,6 +1,6 @@
-#' Human islet single cell RNA-Seq data from Lawlor et. al. (2017)
+#' Human islet single cell RNA-Seq data from Lawlor et. al. (2016)
 #'
-#' Gene-level read counts from the single cell RNA sequencing experiment of Lawlor et. al. (2017)
+#' Gene-level read counts from the single cell RNA sequencing experiment of Lawlor et. al. (2016)
 #'
 #'
 #' @docType data
