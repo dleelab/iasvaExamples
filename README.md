@@ -19,5 +19,5 @@ Lawlor_Islet_scRNAseq_Read_Counts: Gene-level read counts
 Lawlor_Islet_scRNAseq_Annotations: Annotations describing the islet samples and experimental settings
 
 #### Usage
-data("Lawlor_Islet_scRNAseq_Read_Counts")
-data("Lawlor_Islet_scRNAseq_Annotations")
+      data("Lawlor_Islet_scRNAseq_Read_Counts")
+      data("Lawlor_Islet_scRNAseq_Annotations")
