@@ -8,7 +8,7 @@
 
 To install this package, start R and enter the following commands:
 
-      if(!require(somepackage)){
+      if(!require(devtools)){
             install.packages("devtools")
             library(devtools)
       }
@@ -26,7 +26,6 @@ To install this package, start R and enter the following commands:
 Lawlor_Islet_scRNAseq_Read_Counts: Gene-level read counts  
 Lawlor_Islet_scRNAseq_Annotations: Annotations describing the islet samples and experimental settings
 
-
-##### Usage
+Usage:
       data("Lawlor_Islet_scRNAseq_Read_Counts")
       data("Lawlor_Islet_scRNAseq_Annotations")
