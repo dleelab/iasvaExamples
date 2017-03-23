@@ -1,5 +1,5 @@
-# Data examples for Iteratively Adjusted Surrogate Variable Analysis (IA-SVA) 
-
+# R data package for IA-SVA 
+The R package includes various data examples for IA-SVA.
 
 
 
@@ -15,7 +15,10 @@ To install this package, start R and enter the following commands:
       install_github("dleelab/iasvaExamples")
       
 
+## Load the package
+To load this package, enter the following command to the R console:
 
+      library(iasvaExamples)
 
 
 ## Data List
