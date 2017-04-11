@@ -1,5 +1,5 @@
 # R data package for IA-SVA 
-The R package includes various data examples for IA-SVA.
+This R package includes various data examples for IA-SVA.
 
 
 
@@ -32,3 +32,12 @@ Lawlor_Islet_scRNAseq_Annotations: Annotations describing the islet samples and 
 ###### Usage:
       data("Lawlor_Islet_scRNAseq_Read_Counts")
       data("Lawlor_Islet_scRNAseq_Annotations")
+
+#### Human Brain single cell RNA-seq data from [Darmanis et. al. (2015)](http://www.pnas.org/content/112/23/7285.long)
+
+Darmanis_Brain_scRNAseq_Read_Counts: Gene-level read counts  
+Darmanis_Brain_scRNAseq_Annotations: Annotations describing the brain samples and experimental settings
+
+###### Usage:
+      data("Darmanis_Brain_scRNAseq_Read_Counts")
+      data("Darmanis_Brain_scRNAseq_Annotations")
