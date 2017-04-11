@@ -41,3 +41,12 @@ Darmanis_Brain_scRNAseq_Annotations: Annotations describing the brain samples an
 ###### Usage:
       data("Darmanis_Brain_scRNAseq_Read_Counts")
       data("Darmanis_Brain_scRNAseq_Annotations")
+
+#### Human Islet single cell RNA-seq data from [Xin et. al. (2016)](http://www.cell.com/cell-metabolism/abstract/S1550-4131(16)30434-X)
+
+Xin_Islet_scRNAseq_Read_Counts: Gene-level read counts  
+Xin_Islet_scRNAseq_Annotations: Annotations describing the islet samples and experimental settings
+
+###### Usage:
+      data("Xin_Islet_scRNAseq_Read_Counts")
+      data("Xin_Islet_scRNAseq_Annotations")
