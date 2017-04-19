@@ -2,6 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
-.vignettes
-.data_prep
+vignettes/
+data_prep/
 
