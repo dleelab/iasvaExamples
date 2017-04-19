@@ -3,12 +3,12 @@
 \docType{data}
 \name{Lawlor_Islet_scRNAseq_Read_Counts}
 \alias{Lawlor_Islet_scRNAseq_Read_Counts}
-\title{Human islet single cell RNA-Seq data from Lawlor et. al. (2017)}
+\title{Human islet single cell RNA-Seq data from Lawlor et. al. (2016)}
 \format{A data frame with 26616 rows and 638 variables}
 \usage{
 data(Lawlor_Islet_scRNAseq_Read_Counts)
 }
 \description{
-Gene-level read counts from the single cell RNA sequencing experiment of Lawlor et. al. (2017)
+Gene-level read counts from the single cell RNA sequencing experiment of Lawlor et. al. (2016)
 }
 \keyword{datasets}

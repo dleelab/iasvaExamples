@@ -3,7 +3,7 @@
 \docType{data}
 \name{Lawlor_Islet_scRNAseq_Annotations}
 \alias{Lawlor_Islet_scRNAseq_Annotations}
-\title{Human islet single cell RNA-Seq data from Lawlor et. al. (2017)}
+\title{Human islet single cell RNA-Seq data from Lawlor et. al. (2016)}
 \format{A data frame with 638 rows and 26 variables}
 \usage{
 data(Lawlor_Islet_scRNAseq_Annotations)
