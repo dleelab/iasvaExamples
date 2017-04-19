@@ -7,5 +7,5 @@
 #' @keywords datasets
 #' @name Darmanis_Brain_scRNAseq_Read_Counts
 #' @usage data(Darmanis_Brain_scRNAseq_Read_Counts)
-#' @format A data frame with 23779 rows and 461 variables
+#' @format A data frame with 23326 rows and 461 variables
 NULL
