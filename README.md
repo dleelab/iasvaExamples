@@ -1,18 +1,12 @@
 # R data package for IA-SVA 
 This R package includes various data examples for IA-SVA.
 
-
-
-
 ## Installation
 
 To install this package, start R and enter the following commands:
 
-      if(!require(devtools)){
-            install.packages("devtools")
-            library(devtools)
-      }
-      install_github("dleelab/iasvaExamples")
+      library(devtools)
+      devtools::install_github("dleelab/iasvaExamples")
       
 
 ## Load the package
