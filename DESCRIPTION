@@ -1,12 +1,12 @@
 Package: iasvaExamples
 Type: Package
-Title: What the Package Does (Title Case)
-Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Title: iasva example data package
+Version: 1.0.0
+Author: Donghyung Lee
+Maintainer: Donghyung Lee <donghyung.lee@jax.org>
+Description: This package contains example datasets for IA-SVA R package and vignettes.
+License: GPL-2
 Encoding: UTF-8
 LazyData: true
+VignetteBuilder: knitr
 RoxygenNote: 6.0.1
