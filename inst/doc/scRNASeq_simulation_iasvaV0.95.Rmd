@@ -1,0 +1,164 @@
+---
+title: "scRNA-seq data simulation"
+author: "Donghyung Lee"
+date: '`r Sys.Date()`'
+---
+
+To make simulation studies more objective, we used a simulation design suggested by the author of svaseq (http://jtleek.com/svaseq/simulateData.html). We slightly modified the original design to simulate realistic single cell RNA sequencing (scRNA-seq) data sets (read counts with a high dropout rate) and multiple correlated hidden factors. We simulated baseline scRNA-seq data using the Polyester R package (https://bioconductor.org/packages/release/bioc/html/polyester.html) by using the zero-inflated negative binomial distribution parameters estimated from a real-world scRNA-seq data obtained from human pancreatic islet samples ([Lawlor et. al., 2016](http://genome.cshlp.org/content/early/2017/01/16/gr.212720.116)). The islet scRNA-seq dataset is included in a R data package ("iasvaExamples") containing data examples for IA-SVA (https://github.com/dleelab/iasvaExamples). To install the 'iasvaExamples' package, follow the instruction provided in the GitHub page. 
+
+## Load packages
+```{r load_packages, echo=TRUE, message=FALSE}
+rm(list=ls())
+library(iasva)
+library(iasvaExamples)
+library(polyester)
+library(sva)
+library(corrplot)
+library(DescTools) #pcc i.e., Pearson's contingency coefficient
+library(RColorBrewer)
+color.vec <- brewer.pal(8, "Set1")
+```
+
+## Load the islet single cell RNA-Seq data (n=638 cells, and 26K genes)
+```{r load_data, echo=TRUE}
+data("Lawlor_Islet_scRNAseq_Read_Counts")
+data("Lawlor_Islet_scRNAseq_Annotations")
+ls()
+counts <- Lawlor_Islet_scRNAseq_Read_Counts
+anns <- Lawlor_Islet_scRNAseq_Annotations
+dim(anns)
+dim(counts)
+
+summary(anns)
+ContCoef(table(anns$Gender, anns$Cell_Type))
+ContCoef(table(anns$Phenotype, anns$Cell_Type))
+ContCoef(table(anns$Race, anns$Cell_Type))
+ContCoef(table(anns$Patient_ID, anns$Cell_Type))
+ContCoef(table(anns$Batch, anns$Cell_Type))
+```
+
+## Look at mean variance relationship
+```{r mean_var_relationship, eval=TRUE, include=TRUE, warning=FALSE}
+plot(rowMeans(log(counts+1)),rowVars(log(counts+1)),pch=19,col=color.vec[2])
+```
+
+#### Estimate zero inflated negative binomial parameters from the islet data
+```{r param_estimation, eval=TRUE}
+## Estimate the zero inflated negative binomial parameters
+#set.seed(12345)
+set.seed(2018)
+params = get_params(counts)
+```
+
+
+#### Simulate a scRNA-seq data set affected by a known factor and three hidden factors
+```{r simulate_data, eval=TRUE, fig.height=10, fig.width=8}
+sample.size <- 50
+num.genes <- 10000
+prop.kfactor.genes <- 0.1    #known factor
+prop.hfactor1.genes <- 0.3   #hidden factor1
+prop.hfactor2.genes <- 0.2   #hidden factor2
+prop.hfactor3.genes <- 0.1   #hidden factor3
+
+num.kfactor.genes <- num.genes*prop.kfactor.genes
+num.hfactor1.genes <- num.genes*prop.hfactor1.genes
+num.hfactor2.genes <- num.genes*prop.hfactor2.genes
+num.hfactor3.genes <- num.genes*prop.hfactor3.genes
+
+factor.prop <- 0.5
+flip.prob <- 0.8 # high corrleation between factors 
+#flip.prob <- 0.5 # row correlation between factors
+
+# make first 10% of genes affected by the known factor.
+kfactor = c(rep(-1,each=sample.size*factor.prop),rep(1,each=sample.size-(sample.size*factor.prop)))
+
+coinflip = rbinom(sample.size,size=1,prob=flip.prob)
+hfactor1 = kfactor*coinflip + -kfactor*(1-coinflip)
+coinflip = rbinom(sample.size,size=1,prob=flip.prob)
+hfactor2 = kfactor*coinflip + -kfactor*(1-coinflip)
+coinflip = rbinom(sample.size,size=1,prob=flip.prob)
+hfactor3 = kfactor*coinflip + -kfactor*(1-coinflip)
+
+corrplot.mixed(cor(cbind(kfactor,hfactor1,hfactor2,hfactor3)))
+
+hfactor.mat <- cbind(hfactor1,hfactor2,hfactor3)
+kfcoeffs = c(rnorm(num.kfactor.genes),rep(0,num.genes-num.kfactor.genes))
+nullindex= (num.kfactor.genes+1):num.genes
+
+hfcoeffs1 <- rep(0,num.genes)
+hfcoeffs2 <- rep(0,num.genes)
+hfcoeffs3 <- rep(0,num.genes)
+
+## genes affected by each hidden factor is randomly selected.
+hfcoeffs1[sample(1:num.genes, num.hfactor1.genes)] <- rnorm(num.hfactor1.genes, sd=1)
+hfcoeffs2[sample(1:num.genes, num.hfactor2.genes)] <- rnorm(num.hfactor2.genes, sd=1)
+hfcoeffs3[sample(1:num.genes, num.hfactor3.genes)] <- rnorm(num.hfactor3.genes, sd=1)
+
+coeffs = cbind(hfcoeffs1, hfcoeffs2, hfcoeffs3, kfcoeffs)
+controls = ((hfcoeffs1!=0)|(hfcoeffs2!=0)|(hfcoeffs3!=0))&(kfcoeffs==0)
+
+par(mfrow=c(5,1))
+plot(kfcoeffs)
+plot(hfcoeffs1)
+plot(hfcoeffs2)
+plot(hfcoeffs3)
+plot(controls)
+par(mfrow=c(1,1))
+
+mod = model.matrix(~-1 + hfactor1 + hfactor2 + hfactor3 + kfactor)
+
+dat0 = create_read_numbers(params$mu,params$fit,
+                                     params$p0,beta=coeffs,mod=mod)
+
+sum(dat0==0)/length(dat0)
+filter = apply(dat0, 1, function(x) length(x[x>5])>=3)
+dat0 = dat0[filter,]
+sum(dat0==0)/length(dat0)
+controls <- controls[filter]
+
+dim(dat0)
+dim(mod)
+```
+
+## Estimate hidden factors using USVA, SSVA and IA-SVA and compare them
+```{r hidden_factor_estimation, eval=TRUE, fig.height=5, fig.width=10}
+## set null and alternative models
+mod1 = model.matrix(~kfactor)
+mod0 = cbind(mod1[,1])
+
+## Estimate hidden factors with unsuprvised SVA
+usva.res = svaseq(dat0,mod1,mod0)$sv
+cor(hfactor1, usva.res[,1])
+cor(hfactor2, usva.res[,2])
+cor(hfactor3, usva.res[,3])
+
+## Estimate hidden factors with supervised SVA
+ssva.res = svaseq(dat0,mod1,mod0,controls=controls)$sv
+cor(hfactor1, ssva.res[,1])
+cor(hfactor2, ssva.res[,2])
+cor(hfactor3, ssva.res[,3])
+
+## Estimate hidden factors with IA-SVA
+iasva.res <- iasva(t(dat0), mod1[,-1], num.p=20)$sv # the default number of permutations in SVA = 20
+cor(hfactor1, iasva.res[,1])
+cor(hfactor2, iasva.res[,2])
+cor(hfactor3, iasva.res[,3])
+
+
+hf1.mat <- cbind(hfactor1, usva.res[,1], ssva.res[,1], iasva.res[,1])
+hf2.mat <- cbind(hfactor2, usva.res[,2], ssva.res[,2], iasva.res[,2])
+hf3.mat <- cbind(hfactor3, usva.res[,3], ssva.res[,3], iasva.res[,3])
+colnames(hf1.mat) <- c("HF1", "USVA", "SSVA", "IA-SVA")
+colnames(hf2.mat) <- c("HF2", "USVA", "SSVA", "IA-SVA")
+colnames(hf3.mat) <- c("HF3", "USVA", "SSVA", "IA-SVA")
+
+par(mfrow=c(1,3))
+corrplot.mixed(cor(hf1.mat), tl.pos="lt")
+corrplot.mixed(cor(hf2.mat), tl.pos="lt")
+corrplot.mixed(cor(hf3.mat), tl.pos="lt")
+```
+
+## Session Info
+```{r session_info, echo=TRUE}
+sessionInfo()
+```
