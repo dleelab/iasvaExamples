@@ -17,7 +17,7 @@ Here, we illustrate how to use the iasva package to detect cell cycle stage diff
 #devtools
 library(devtools)
 #iasva
-devtools::install_github("UcarLab/IA-SVA")
+devtools::install_github("UcarLab/iasva")
 #iasvaExamples  
 devtools::install_github("dleelab/iasvaExamples")
 ```
