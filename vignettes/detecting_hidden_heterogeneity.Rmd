@@ -17,7 +17,7 @@ The iasva package can be used to detect hidden heterogenity within bulk or singl
 #devtools
 library(devtools)
 #iasva
-devtools::install_github("UcarLab/IA-SVA")
+devtools::install_github("UcarLab/iasva")
 #iasvaExamples  
 devtools::install_github("dleelab/iasvaExamples")
 ```
