@@ -29,13 +29,22 @@ library(irlba) # partial SVD, the augmented implicitly restarted Lanczos bidiago
 library(iasva)
 library(iasvaExamples)
 library(sva)
+library(SCnorm)
 library(Rtsne)
 library(pheatmap)
 library(corrplot)
 library(DescTools) #pcc i.e., Pearson's contingency coefficient
 library(RColorBrewer)
 
-color.vec <- brewer.pal(3, "Set1")
+setwd("~/Dropbox/temp/")
+color.vec <- brewer.pal(9, "Set1")[c(1,9)]
+
+# Normalization.
+normalize <- function(counts) 
+{
+    normfactor <- colSums(counts)
+    return(t(t(counts)/normfactor)*median(normfactor))
+}
 ```
 
 ## Load the islet single cell RNA-Seq data
@@ -61,6 +70,7 @@ The annotations describing the islet samples and experimental settings are store
 ## Extract alpha cells (GCG expressed cells) from non-diabetics 
 To illustrate how IA-SVA can be used to detect hidden heterogeneity within a homogenous cell population (i.e., alpha cells), we use read counts of alpha cells from healthy (non-diabetic) subjects (n = 101).   
 ```{r alpha_cells, echo=TRUE, results='asis'}
+# Selected T2D patients/GCG cell type
 counts <- counts[, (anns$Phenotype!="Non-Diabetic")&(anns$Cell_Type=="GCG")] 
 anns <- subset(anns, (Phenotype!="Non-Diabetic")&(Cell_Type=="GCG"))
 dim(counts)
@@ -79,62 +89,104 @@ dim(counts)
 
 prop.zeros <- sum(counts==0)/length(counts)
 prop.zeros
+
 ```
 
-## Calculate geometric library size, i.e., library size of log-transfromed read counts 
-It is well known that the geometric library size (i.e., library size of log-transfromed read counts) or proportion of expressed genes in each cell explains a very large portion of variability of scRNA-Seq data ([Hicks et. al. 2015 BioRxiv](http://biorxiv.org/content/early/2015/08/25/025528), [McDavid et. al. 2016 Nature Biotechnology](http://www.nature.com/nbt/journal/v34/n6/full/nbt.3498.html)). Frequently, the first principal component of log-transformed scRNA-Seq read counts is highly correlated with the geometric library size (r ~ 0.9). Here, we calculate the geometric library size vector, which will be used as a known factor in the IA-SVA algorithm.
-```{r geno_lib_size, echo=TRUE, fig.width=7, fig.height=4}
-Geo_Lib_Size <- colSums(log(counts+1))
-barplot(Geo_Lib_Size, xlab="Cell", ylab="Geometric Lib Size", las=2)
+```{r normalization}
+## cpm normalization
+summary(colSums(counts))
+#counts <- normalize(counts)
+summary(colSums(counts))
+
+## Normalization using SCnorm
+## count-depth relationship for all genes
+Conditions = rep(c(1), each=101)
+countDeptEst <- plotCountDepth(Data = counts, Conditions = Conditions,
+FilterCellProportion = .1, NCores=3)
+
+DataNorm <- SCnorm(Data = counts, Conditions = Conditions,
+PrintProgressPlots = FALSE,
+FilterCellNum = 10,
+NCores=3)
+
+counts <- results(DataNorm)
+summary(colSums(counts))
+```
+
+## Calculate the number of detected genes 
+It is well known that the number of detected genes in each cell explains a very large portion of variability in scRNA-Seq data ([Hicks et. al. 2015 BioRxiv](http://biorxiv.org/content/early/2015/08/25/025528), [McDavid et. al. 2016 Nature Biotechnology](http://www.nature.com/nbt/journal/v34/n6/full/nbt.3498.html)). Frequently, the first principal component of log-transformed scRNA-Seq read counts is highly correlated with the number of detected genes (e.g., r > 0.9). Here, we calculate the number of detected genes for islet cells, which will be used as an known factor in the IA-SVA analyses. 
+```{r num_detected_genes, echo=TRUE, fig.width=7, fig.height=4}
+Num_Detected_Genes <- colSums(counts>0)
+Geo_Lib <- colSums(log(counts+1))
+summary(Num_Detected_Genes)
+summary(Geo_Lib)
+
+barplot(Num_Detected_Genes, xlab="Cell", las=2, ylab = "Number of detected genes")
 lcounts <- log(counts + 1)
 
 # PC1 and Geometric library size correlation
 pc1 = irlba(lcounts - rowMeans(lcounts), 1)$v[,1] ## partial SVD
-cor(Geo_Lib_Size, pc1)
+cor(Num_Detected_Genes, pc1)
+cor(Geo_Lib, pc1)
 ```
+
 
 ## Run IA-SVA
 Here, we run IA-SVA using Patient_ID and Geo_Lib_Size as known factors and identify five hidden factors. 
 SVs are plotted in a pairwise fashion to uncover which SVs can seperate cell types. 
 ```{r run_iasva, echo=TRUE, fig.width= 7, fig.height=6}
-set.seed(454353)
+set.seed(4543535)
 Patient_ID <- anns$Patient_ID
-mod <- model.matrix(~Patient_ID+Geo_Lib_Size)
+#mod <- model.matrix(~Patient_ID+Num_Detected_Genes)
+mod <- model.matrix(~Patient_ID+Geo_Lib)
 iasva.res<- iasva(t(counts), mod[,-1],verbose=FALSE, permute=FALSE, num.sv=5) ##irlba
 iasva.sv <- iasva.res$sv
 
 plot(iasva.sv[,1], iasva.sv[,2], xlab="SV1", ylab="SV2")
 
-Cell_Type <- as.factor(iasva.sv[,2] > -0.2) 
-levels(Cell_Type)=c("Cell1","Cell2")
-table(Cell_Type)
+Cluster <- as.factor(iasva.sv[,2] < 0.1) 
+levels(Cluster)=c("Cell1","Cell2")
+table(Cluster)
 
 # We identified 6 outlier cells based on SV2 that are marked in red
-pairs(iasva.sv, main="IA-SVA", pch=21, col=color.vec[Cell_Type], bg=color.vec[Cell_Type], oma=c(4,4,6,12)) #4,4,6,12
-legend("right", levels(Cell_Type), fill=color.vec, bty="n")
+pairs(iasva.sv, main="IA-SVA", pch=21, col=color.vec[Cluster], bg=color.vec[Cluster], oma=c(4,4,6,12)) #4,4,6,12
+legend("right", levels(Cluster), fill=color.vec, bty="n")
 
-plot(iasva.sv[,1:2], main="IA-SVA", pch=21, xlab="SV1", ylab="SV2", col=color.vec[Cell_Type], bg=color.vec[Cell_Type])
+plot(iasva.sv[,1:2], main="IA-SVA", pch=21, xlab="SV1", ylab="SV2", col=color.vec[Cluster], bg=color.vec[Cluster])
 
-cor(Geo_Lib_Size, iasva.sv[,2])
+cor(Num_Detected_Genes, iasva.sv[,2])
+cor(Geo_Lib, iasva.sv[,2])
 
 corrplot(cor(iasva.sv))
 ```
 
 As shown in the above figure, SV2 clearly separates alpha cells into two groups: 6 outlier cells (marked in red) and the rest of the alpha cells (marked in green). SV3 and SV4 also capture outlier cells. However, we will focus on SV2 in the rest of the analyses.
 
-
 ## Find marker genes for the detected heterogeneity (SV2).
-Here, using the find.markers() function we find marker genes (n=105 genes) that are significantly associated with SV2 (multiple testing adjusted p-value < 0.05, default significance cutoff, and R-squared value > 0.3, default R-squared cutoff).  
-```{r find_markers, echo=TRUE, fig.width=7, fig.height=14}
-marker.counts <- find.markers(t(counts), as.matrix(iasva.sv[,2]))
+Here, using the find_markers() function we find marker genes (n=105 genes) that are significantly associated with SV2 (multiple testing adjusted p-value < 0.05, default significance cutoff, and R-squared value > 0.3, default R-squared cutoff).  
+```{r find_markers, echo=TRUE, fig.width=7, fig.height=5}
+# try different R2 thresholds
+pdf("Clustering_analyses_figure2.pdf")
+r2.results <- study_R2(t(counts), iasva.sv,selected.svs=2, no.clusters=2)
+dev.off()
+marker.counts <- find_markers(t(counts), as.matrix(iasva.sv[,2]), rsq.cutoff = 0.6)
+marker.counts.long <- find_markers(t(counts), as.matrix(iasva.sv[,2]), rsq.cutoff = 0.3)
 nrow(marker.counts)
 rownames(marker.counts)
+nrow(marker.counts.long)
 
-anno.col <- data.frame(Cell_Type=Cell_Type)
+anno.col <- data.frame(Cluster=Cluster, SV2=iasva.sv[,2])
 rownames(anno.col) <- colnames(marker.counts)
 head(anno.col)
 
-pheatmap(log(marker.counts+1), show_colnames =FALSE, clustering_method = "ward.D2",cutree_cols = 2,annotation_col = anno.col)
+cluster.col <- color.vec[1:2]
+names(cluster.col) <- as.vector(levels(Cluster))
+anno.colors <- list(Cluster=cluster.col)
+anno.colors
+
+pheatmap(log(marker.counts+1), show_colnames =FALSE, clustering_method = "ward.D2",cutree_cols = 2,annotation_col = anno.col,
+         annotation_colors = anno.colors)
+
 ```
 
 
@@ -146,51 +198,44 @@ For comparison purposes, we applied tSNE on read counts of all genes to identify
 set.seed(323542534)
 tsne.res <- Rtsne(t(lcounts), dims = 2)
 
-plot(tsne.res$Y, main="tSNE", xlab="tSNE Dim1", ylab="tSNE Dim2", pch=21, col=color.vec[Cell_Type], bg=color.vec[Cell_Type], oma=c(4,4,6,12))
-legend("bottomright", levels(Cell_Type), fill=color.vec, bty="n")
+plot(tsne.res$Y, main="tSNE", xlab="tSNE Dim1", ylab="tSNE Dim2", pch=21, col=color.vec[Cluster], bg=color.vec[Cluster], oma=c(4,4,6,12))
+legend("bottomright", levels(Cluster), border="white", fill=color.vec, bty="n")
+
 ```
 
 As shown above, tSNE fails to detect the outlier cells that are identified by IA-SVA when all genes are used. Same color coding is used as above. 
 
-## Run tSNE post IA-SVA analyses, i.e., run tSNE on marker genes associated with SV2 as detected by IA-SVA.
-Here, we apply tSNE on the marker genes for SV2 obtained from IA-SVA
-```{r run_tsne_post_iasva, echo=TRUE, fig.width=7, fig.height=7}
-set.seed(345233)
-tsne.res <- Rtsne(unique(t(log(marker.counts+1))), dims = 2)
-
-plot(tsne.res$Y, main="tSNE post IA-SVA", xlab="tSNE Dim1", ylab="tSNE Dim2", pch=21, col=color.vec[Cell_Type], bg=color.vec[Cell_Type], oma=c(4,4,6,12))
-legend("bottomright", levels(Cell_Type), fill=color.vec, bty="n")
-```
-
-tSNE using SV2 marker genes better seperate these ourlier cells. This analyses suggest that gene selection using IA-SVA combined
-with tSNE analyses can be a powerful way to detect rare cells introducing variability in the single cell gene expression data. 
 
 ## Run principal component analysis (PCA) to detect the hidden heterogeneity (SV2).
 Here, we use PCA to detect the hidden heterogeneity (SV2) detected by IA-SVA. 
-```{r run_pca, echo=TRUE, fig.width=7, fig.height=6}
+```{r run_pca, echo=TRUE, fig.width=7, fig.height=7}
+set.seed(345233)
 pca.res = irlba(lcounts - rowMeans(lcounts), 5)$v ## partial SVD
 
-pairs(pca.res, main="PCA", pch=21, col=color.vec[Cell_Type], bg=color.vec[Cell_Type], oma=c(4,4,6,12)) #4,4,6,12
-legend("right", levels(Cell_Type), fill=color.vec, bty="n")
+pairs(pca.res, main="PCA", pch=21, col=color.vec[Cluster], bg=color.vec[Cluster], oma=c(4,4,6,12)) #4,4,6,12
+legend("right", levels(Cluster), border="white", fill=color.vec, bty="n")
 
-plot(pca.res[,2:3], main="PCA", xlab="PC2", ylab="PC3", pch=21, col=color.vec[Cell_Type], bg=color.vec[Cell_Type], oma=c(4,4,6,12))
-legend("bottomright", levels(Cell_Type), fill=color.vec, bty="n")
+plot(pca.res[,2:3], main="PCA", xlab="PC2", ylab="PC3", pch=21, col=color.vec[Cluster], bg=color.vec[Cluster], oma=c(4,4,6,12))
+legend("bottomright", levels(Cluster), border="white", fill=color.vec, bty="n")
 ```
 
 PC3 somewhat captures the six outlier cells, however this seperation is not as clear as the IA-SVA results.
 
 ## Run surrogate variable analysis (SVA) to detect the hidden heterogeneity (SV2).
 Here, for comparison purposes we use SVA (using thre SVs) to detect the hidden heterogeneity in our example data. 
-```{r run_sva, echo=TRUE, fig.width=7, fig.height=6}
-mod1 <- model.matrix(~Patient_ID+Geo_Lib_Size)
+```{r run_sva, echo=TRUE, fig.width=7, fig.height=7}
+#mod1 <- model.matrix(~Patient_ID+Num_Detected_Genes)
+mod1 <- model.matrix(~Patient_ID+Geo_Lib)
 mod0 <- cbind(mod1[,1])
 
 sva.res = svaseq(counts,mod1,mod0, n.sv=5)$sv
 
-pairs(sva.res, main="SVA", pch=21, col=color.vec[Cell_Type], bg=color.vec[Cell_Type], oma=c(4,4,6,12)) #4,4,6,12
-legend("right", levels(Cell_Type), fill=color.vec, bty="n")
+pairs(sva.res, main="SVA", pch=21, col=color.vec[Cluster], bg=color.vec[Cluster], oma=c(4,4,6,12)) #4,4,6,12
+legend("right", levels(Cluster), border="white", fill=color.vec, bty="n")
 
-plot(sva.res[,1:2], main="SVA", xlab="SV1", ylab="SV2", pch=21, col=color.vec[Cell_Type], bg=color.vec[Cell_Type])
+plot(sva.res[,1:2], main="SVA", xlab="SV1", ylab="SV2", pch=21, col=color.vec[Cluster], bg=color.vec[Cluster])
+legend("topleft", levels(Cluster), border="white", fill=color.vec, bty="n")
+
 ```
 
 SV2 is associated with the six outlier samples, however the seperation of these cells is not as clear as the IA-SVA results.
@@ -198,8 +243,56 @@ SV2 is associated with the six outlier samples, however the seperation of these 
 
 ## Correlation between SV2 and the geometric library size
 ```{r SV2_geometric_lib_size, echo=TRUE}
-cor(Geo_Lib_Size, iasva.sv[,2])
+cor(Num_Detected_Genes, iasva.sv[,2])
+cor(Geo_Lib, iasva.sv[,2])
 ```
+
+
+```{r  gen_Figure2ABCD, fig.width=5, fig.height=6}
+## 1,2
+## 3,4
+
+pdf(file="Lawlor_Islets_Alpha_Doublets_Figure2_ABCD.pdf", width=5, height=6)
+layout(matrix(c(1,2,3,4), nrow=2, ncol=2, byrow=TRUE))
+plot(iasva.sv[,1:2], main="IA-SVA", pch=21, xlab="SV1", ylab="SV2", col=color.vec[Cluster], bg=color.vec[Cluster])
+legend("topright", levels(Cluster), border="white", fill=color.vec, bty="n")
+plot(pca.res[,2:3], main="PCA", pch=21, xlab="PC2", ylab="PC3", col=color.vec[Cluster], bg=color.vec[Cluster])
+plot(sva.res[,1:2], main="USVA", xlab="SV1", ylab="SV2", pch=21, col=color.vec[Cluster], bg=color.vec[Cluster])
+plot(tsne.res$Y, main="tSNE", xlab="Dimension 1", ylab="Dimension 2", pch=21, col=color.vec[Cluster], bg=color.vec[Cluster])
+dev.off()
+
+```
+
+
+```{r gen_Figure2E}
+
+anno.col <- data.frame(Cluster=Cluster)
+rownames(anno.col) <- colnames(marker.counts)
+head(anno.col)
+
+cluster.col <- color.vec
+names(cluster.col) <- as.vector(levels(Cluster))
+anno.colors <- list(Cluster=cluster.col)
+anno.colors
+
+pheatmap(log(marker.counts+1), show_colnames =FALSE, clustering_method = "ward.D2",cutree_cols = 2,annotation_col = anno.col,
+         annotation_colors = anno.colors,
+         filename="Lawlor_Islets_Alpha_iasva_SV2Markers_rsqcutoff0.6_pheatmap_iasvaV0.95.pdf", width=6, height=5)
+
+pheatmap(log(marker.counts.long+1), show_colnames =FALSE, clustering_method = "ward.D2",cutree_cols = 2,annotation_col = anno.col,
+         annotation_colors = anno.colors,
+         filename="Lawlor_Islets_Alpha_iasva_SV2Markers_rsqcutoff0.3_pheatmap_iasvaV0.95.pdf", width=6, height=14)
+
+```
+
+```{r gen_SV2_gene_list}
+write.table(as.data.frame(rownames(marker.counts)), file="Lawlor_Islets_Alpha_Doublets_SV2_Genes_rsqcutoff0.6.txt", quote=F,
+              row.names=F, col.names=F, sep=" ")
+
+write.table(as.data.frame(rownames(marker.counts.long)), file="Lawlor_Islets_Alpha_Doublets_SV2_Genes_rsqcutoff0.3.txt", quote=F,
+              row.names=F, col.names=F, sep=" ")
+```
+
 
 
 ## Session Info
