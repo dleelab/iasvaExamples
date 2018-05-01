@@ -121,7 +121,7 @@ dim(mod)
 ```
 
 ## Estimate hidden factors using USVA, SSVA and IA-SVA and compare them
-```{r hidden_factor_estimation, eval=TRUE, fig.height=5, fig.width=10}
+```{r hidden_factor_estimation, eval=TRUE, fig.height=10, fig.width=10}
 ## set null and alternative models
 mod1 = model.matrix(~kfactor)
 mod0 = cbind(mod1[,1])
@@ -152,10 +152,10 @@ colnames(hf1.mat) <- c("HF1", "USVA", "SSVA", "IA-SVA")
 colnames(hf2.mat) <- c("HF2", "USVA", "SSVA", "IA-SVA")
 colnames(hf3.mat) <- c("HF3", "USVA", "SSVA", "IA-SVA")
 
-par(mfrow=c(1,3))
-corrplot.mixed(cor(hf1.mat), tl.pos="lt")
-corrplot.mixed(cor(hf2.mat), tl.pos="lt")
-corrplot.mixed(cor(hf3.mat), tl.pos="lt")
+par(mfrow=c(2,2))
+corrplot.mixed(abs(cor(hf1.mat)), tl.pos="lt")
+corrplot.mixed(abs(cor(hf2.mat)), tl.pos="lt")
+corrplot.mixed(abs(cor(hf3.mat)), tl.pos="lt")
 ```
 
 ## Session Info
