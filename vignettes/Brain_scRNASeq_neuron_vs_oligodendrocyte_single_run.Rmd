@@ -1,0 +1,256 @@
+---
+title: "Performance assessment of IA-SVA using Brain scRNA-Seq data"
+author: "Donghyung Lee & Duygu Ucar"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+Here, we becnhmark several factor analyses methods on single cell RNA sequencing (scRNA-Seq) data obtained from human human brain samples  ([Darmanis et. al., 2015](http://www.pnas.org/content/112/23/7285.long)). All of these methods are used to uncover variation associated with different cell types and compared against each other. This dataset is included in an R data package ("iasvaExamples") containing data examples for IA-SVA (https://github.com/dleelab/iasvaExamples). To install the 'iasvaExamples' package, follow the instructions provided in the GitHub page.
+
+## Load packages
+```{r load_packages, echo=TRUE, message=FALSE}
+rm(list=ls())
+library(iasva)
+library(iasvaExamples)
+library(sva)
+library(RUVSeq)
+library(Rtsne)
+library(pheatmap)
+library(corrplot)
+library(DescTools) #pcc i.e., Pearson's contingency coefficient
+library(RColorBrewer)
+library(zinbwave)
+library(nnet)
+
+color.vec <- brewer.pal(8, "Set1")
+
+# Set you output directory
+setwd("~/Dropbox/projects/IA-SVA/Darmanis_Brain")
+set.seed(3532379)
+
+# To make the task more challenging we selected 1000 genes to be used in downstream analyses. 
+num.genes <- 1000
+
+```
+
+## Load the brain single cell RNA-Seq data
+```{r load_data, echo=TRUE}
+data("Darmanis_Brain_scRNAseq_Read_Counts")
+data("Darmanis_Brain_scRNAseq_Annotations")
+ls()
+counts.total <- Darmanis_Brain_scRNAseq_Read_Counts
+anns.total <- Darmanis_Brain_scRNAseq_Annotations
+dim(anns.total)
+dim(counts.total)
+
+summary(anns.total)
+table(anns.total$tissue, anns.total$cell_type)
+ContCoef(table(anns.total$tissue, anns.total$cell_type))
+table(anns.total$age, anns.total$cell_type)
+ContCoef(table(anns.total$age, anns.total$cell_type))
+table(anns.total$sample_name, anns.total$cell_type)
+ContCoef(table(anns.total$sample_name, anns.total$cell_type))
+table(anns.total$c1_chip_id, anns.total$cell_type)
+ContCoef(table(anns.total$c1_chip_id, anns.total$cell_type))
+```
+The annotations describing samples and experimental settings are stored in "anns" and the read counts information is stored in "counts". 
+
+For the downstream analyses, select neurons, oligodendrcytes and astrocytes from 2 cell types and 8 individuals. 
+```{r neurons_oliodendrocytes, echo=TRUE, results='asis'}
+# Select neurons and astrocytes for downstream analyses
+selected.cells <- intersect(which(anns.total$tissue=="cortex"), which(anns.total$cell_type=="neurons"|anns.total$cell_type=="astrocytes"))
+counts <- counts.total[, selected.cells]
+anns <- droplevels(anns.total[selected.cells,])
+
+table(anns$tissue, anns$cell_type)
+table(anns$tissue, anns$age)
+table(anns$age, anns$sample_name)
+table(anns$age, anns$c1_chip_id)
+table(anns$tissue, anns$c1_chip_id)
+table(anns$cell_type, anns$sample_name)
+table(anns$cell_type, anns$tissue)
+
+dim(counts)
+dim(anns)
+
+dropout.rate <- sum(counts==0)/(dim(counts)[1]*dim(counts)[2])*100
+dropout.rate
+
+## Filter out lowly-expressed genes 
+filter = apply(counts, 1, function(x) length(x[x>5])>=3)
+counts = as.matrix(counts[filter,])
+dim(counts)
+
+dropout.rate <- sum(counts==0)/(dim(counts)[1]*dim(counts)[2])*100
+dropout.rate
+
+# To make this task more challenging for benchamarking purposes
+# we only used randomly selected 1000 genes in downstream analyses
+rand.gene.list <- sample(1:nrow(counts), num.genes)
+counts <- counts[rand.gene.list,]
+
+Cell_Type <- anns$cell_type
+Tissue <- anns$tissue
+Cell_Type_Num <- as.integer(Cell_Type)
+Samples <- as.integer(anns$sample_name)
+
+```
+
+## Calculate geometric library size, i.e., library size of log-transfromed read counts 
+It is well known that the geometric library size (i.e., library size of log-transfromed read counts) or proportion of expressed genes in each cell explains very large portion of variability of scRNA-Seq data ([Hicks et. al. 2015 BioRxiv](http://biorxiv.org/content/early/2015/08/25/025528), [McDavid et. al. 2016 Nature Biotechnology](http://www.nature.com/nbt/journal/v34/n6/full/nbt.3498.html)). Frequently, the first principal component of log-transformed scRNA-Seq read counts is highly correlated with the geometric library size. (r > 0.9). Here, we calculate it and show the high correlation. Later this vector will be used as an known factor in IA-SVA algorithm.
+
+```{r geno_lib_size, echo=TRUE, fig.width=6, fig.height=4}
+Geo_Lib_Size <- colSums(log(counts+1))
+barplot(Geo_Lib_Size, xlab="Cell")
+lcounts <- log(counts + 1)
+pca.res = svd(lcounts - rowMeans(lcounts))$v
+cor(Geo_Lib_Size, pca.res[,1])
+cor(Geo_Lib_Size, Cell_Type_Num)
+```
+## run analyses
+
+Library size, tissue, and sample ID are used as covariates in all factor analyses except for PCA.
+3 SVs are captured with each method and the SV that has the maximum correlation with the cell type assignments is selected among these 3. This is especially important for a fair comparison of PCA. 
+
+```{r run_analyses, fig.width=6, fig.height=6}
+mod1 = model.matrix(~Geo_Lib_Size+anns$sample_name)
+mod0 = cbind(mod1[,1])
+
+###Estimate Hidden factors using different methods
+
+### IA-SVA 
+start_time <- Sys.time()
+iasva.res<- iasva(t(counts), mod1[,-1],verbose=FALSE, permute=FALSE, num.sv=3)
+end_time <- Sys.time()
+iasva.time <- start_time - end_time
+iasva.sv <- iasva.res$sv
+plot(iasva.sv[,1], iasva.sv[,2],col=Cell_Type, xlab="SV1", ylab="SV2")
+pairs(iasva.sv, col=Cell_Type, main="IA-SVA")
+max.cor.iasva <- which.is.max(c(abs(cor(iasva.sv[,1], Cell_Type_Num)),
+                abs(cor(iasva.sv[,2], Cell_Type_Num)),
+                abs(cor(iasva.sv[,3], Cell_Type_Num))))
+max.cor.iasva                
+
+## PCA
+ldat0 = log(counts + 1)
+start_time <- Sys.time()
+pca.sv = svd(ldat0 - rowMeans(ldat0))$v
+end_time <- Sys.time()
+pca.time <- start_time - end_time
+plot(pca.sv[,1], pca.sv[,2],col=Cell_Type, xlab="SV1", ylab="SV2")
+pairs(pca.sv[,1:3], col=Cell_Type, main="PCA")
+max.cor.pca <- which.is.max(c(abs(cor(pca.sv[,1], Cell_Type_Num)),
+                abs(cor(pca.sv[,2], Cell_Type_Num)),
+                abs(cor(pca.sv[,3], Cell_Type_Num))))
+max.cor.pca
+
+## USVA
+start_time <- Sys.time()
+usva.sv = svaseq(counts,mod1,mod0,n.sv=3)$sv
+end_time <- Sys.time()
+usva.time <- start_time - end_time
+plot(usva.sv[,1], usva.sv[,2],col=Cell_Type, xlab="SV1", ylab="SV2")
+pairs(usva.sv[,1:3], col=Cell_Type, main="USVA")
+max.cor.usva <- which.is.max(c (abs(cor(usva.sv[,1], Cell_Type_Num)),
+                abs(cor(usva.sv[,2], Cell_Type_Num)),
+                abs(cor(usva.sv[,3], Cell_Type_Num))))
+max.cor.usva
+
+### RUVres
+#x <- as.factor(Tissue)
+design <- model.matrix(~Geo_Lib_Size+anns$sample_name)
+start_time <- Sys.time()
+y <- DGEList(counts=counts)
+y <- calcNormFactors(y, method="TMM")
+y <- estimateGLMCommonDisp(y, design)
+y <- estimateGLMTagwiseDisp(y, design)
+fit <- glmFit(y, design)
+res <- residuals(fit, type="deviance")
+set <- betweenLaneNormalization(counts, which="upper")
+genes = rep(TRUE,dim(counts)[1])
+ruvres.sv = RUVr(set,genes,k=3,res,isLog = T)$W
+end_time <- Sys.time()
+ruvres.time <- start_time - end_time
+plot(ruvres.sv[,1], ruvres.sv[,2],col=Cell_Type, xlab="SV1", ylab="SV2")
+pairs(ruvres.sv[,1:3], col=Cell_Type)
+max.cor.ruvres <- which.is.max (c (abs(cor(ruvres.sv[,1], Cell_Type_Num)),
+                abs(cor(ruvres.sv[,2], Cell_Type_Num)),
+                abs(cor(ruvres.sv[,3], Cell_Type_Num))))
+max.cor.ruvres
+
+### RUVemp
+start_time <- Sys.time()
+y <- DGEList(counts=counts)
+y <- calcNormFactors(y, method="TMM")
+y <- estimateGLMCommonDisp(y, design)
+y <- estimateGLMTagwiseDisp(y, design)
+fit <- glmFit(y, design)
+lrt <- glmLRT(fit, coef=2)
+emp.genes =rank(lrt$table$LR) > 400
+ruvemp.sv <- RUVg(counts, emp.genes, k=3)$W
+end_time <- Sys.time()
+ruvemp.time <- start_time - end_time
+plot(ruvemp.sv[,1], ruvemp.sv[,2],col=Cell_Type, xlab="SV1", ylab="SV2")
+pairs(ruvemp.sv[,1:3], col=Cell_Type)
+max.cor.ruvemp <- which.is.max(c (abs(cor(ruvemp.sv[,1], Cell_Type_Num)),
+                abs(cor(ruvemp.sv[,2], Cell_Type_Num)),
+                abs(cor(ruvemp.sv[,3], Cell_Type_Num))))
+max.cor.ruvemp
+
+### ZINB WAVE
+se.data <- SummarizedExperiment(assays=list(counts=counts))
+se.data$LS <- Geo_Lib_Size
+se.data$SN <- anns$sample_name
+se.data$Tissue <- anns$tissue
+# use Geometric library size + Tissue + sample is as covariates
+# suggested epsilon parameter is used for the analyses
+start_time <- Sys.time()
+zinb_cov <- zinbFit(se.data, K=3, X="~LS+SN", epsilon=1000)
+W <- getW(zinb_cov)
+end_time <- Sys.time()
+zinb.time <- start_time - end_time
+colnames(W) <- paste0("W", 1:3)
+pairs(W,col=Cell_Type)
+max.cor.zinb <- which.is.max (c (abs(cor(W[,1], Cell_Type_Num)),
+                abs(cor(W[,2], Cell_Type_Num)),
+                abs(cor(W[,3], Cell_Type_Num))))
+
+max.cor.zinb
+
+```
+
+## Compare results
+Compare results from different methods to the true cell type assignments using correlation plots.
+```{r plot_cor, fig.width=6, fig.height=6}
+## Plot correlation between true cell_type and estimates (SV1)
+celltype.est = cbind(Cell_Type_Num, iasva.sv[,max.cor.iasva],pca.sv[,max.cor.pca],usva.sv[,max.cor.usva], ruvres.sv[,max.cor.ruvres], ruvemp.sv[,max.cor.ruvemp], W[,max.cor.zinb])
+
+colnames(celltype.est) = c("Cell Type","IA-SVA","PCA","USVA","RUVres","RUVemp", "ZINB-WAVE")
+corr = abs(cor(celltype.est))
+print(corr)
+cols = colorRampPalette(c(color.vec[2],"white",color.vec[1]))
+
+corrplot.mixed(corr, lower="ellipse", upper="number", mar=c(0,0,1,0))
+num.cells <- dim(anns)[1]
+pdf(paste0("Brain_scRNASeq_neuron_astro_",num.cells,"_cells.pdf"), height=6, width=6)
+corrplot.mixed(corr, lower="ellipse", upper="number", mar=c(0,0,1,0))
+dev.off()
+
+time.seconds <- c(iasva.time,pca.time,usva.time,ruvres.time,ruvemp.time,zinb.time)
+names(time.seconds) <- c("IA-SVA","PCA","USVA","RUVres","RUVemp", "ZINB-WAVE")
+time.seconds
+barplot(t(as.matrix(abs(time.seconds))), las =2, ylab = "Run time (seconds)")
+
+pdf(paste0("Brain_scRNASeq_neuron_astro_",num.cells,"_cells_run_time.pdf"), height=6, width=6)
+barplot(t(as.matrix(abs(time.seconds))), las =2, ylab = "Run time (seconds)")
+dev.off()
+```
+
+## Session Info
+```{r session_info, echo=TRUE}
+sessionInfo()
+```
