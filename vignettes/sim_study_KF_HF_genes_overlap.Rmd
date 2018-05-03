@@ -1,0 +1,473 @@
+---
+title: "Accuracy of SVs detected when hidden and known factors affect the overlapping sets of genes"
+author: "Donghyung Lee"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+## Install packages
+```{r install_packages, echo=TRUE, eval=FALSE}
+#devtools
+library(devtools)
+#iasva
+devtools::install_github("UcarLab/IA-SVA")
+#iasvaExamples  
+devtools::install_github("dleelab/iasvaExamples")
+```
+
+#### Load packages
+```{r load_packages, echo=TRUE, message=FALSE}
+rm(list=ls())
+library(irlba) # partial SVD, the augmented implicitly restarted Lanczos bidiagonalization algorithm
+library(iasva)
+library(iasvaExamples)
+library(sva)
+library(polyester)
+library(corrplot)
+library(DescTools) #pcc i.e., Pearson's contingency coefficient
+library(RColorBrewer)
+library(reshape2)
+library(ggplot2)
+
+#setwd("/Users/ducar/Desktop/GitHub_Projects/iasvaVignettes/Lawlor_Islets/")
+color.vec <- brewer.pal(9, "Set1")
+
+iasva.tmp <- function(Y, X, intercept=TRUE, num.sv=NULL, permute=TRUE, num.p=100, sig.cutoff= 0.05, threads=1, num.sv.permtest=NULL, tol=1e-10, verbose=FALSE){
+  cat("IA-SVA running...")
+  sv <- NULL
+  pc.stat.obs <- NULL
+  pval <- NULL
+  wgt.mat <- NULL
+  rsq <- NULL
+  isv <- 0
+  while(TRUE){
+    if(!is.null(num.sv)){
+      if(isv==num.sv){ 
+        break
+      }
+    }
+    iasva.res <- iasva.unit.tmp(Y, X, intercept, permute, num.p, threads, num.sv.permtest, tol, verbose)
+    if(iasva.res$pval < sig.cutoff){
+      sv <- cbind(sv, iasva.res$sv)
+      pc.stat.obs <- cbind(pc.stat.obs, iasva.res$pc.stat.obs)
+      pval <- c(pval, iasva.res$pval)
+      wgt.mat <- cbind(wgt.mat, iasva.res$wgt)
+      X <- cbind(X,iasva.res$sv)
+    } else { break }
+    isv <- isv+1
+    cat(paste0("\nSV",isv, " Detected!"))
+  }
+  if (isv > 0) {
+    colnames(sv) <- paste0("SV", 1:ncol(sv))
+    cat(paste0("\n# of significant surrogate variables: ",length(pval)))
+    return(list(sv=sv, pc.stat.obs=pc.stat.obs, pval=pval, n.sv=length(pval), wgt.mat=wgt.mat))
+  } else {
+    cat ("\nNo significant surrogate variables")
+  }
+}
+
+iasva.unit.tmp <- function(Y, X, intercept=TRUE, permute=TRUE, num.p=100, threads=1, num.sv.permtest=NULL, tol=1e-10, verbose=FALSE){
+  if(min(Y)<0){ Y <- Y + abs(min(Y)) }
+  lY <- log(Y+1)
+  if(intercept){
+    fit <- .lm.fit(cbind(1,X), lY)
+  } else {
+    fit <- .lm.fit(X, lY)
+  }
+  resid <- resid(fit)
+  tresid = t(resid)
+  
+  if(verbose) {cat("\n Perform SVD on residuals")}
+  svd_pca <- irlba::irlba(tresid-rowMeans(tresid), 1, tol=tol)
+  
+  if(verbose) {cat("\n Regress residuals on PC1")}
+  fit <- .lm.fit(cbind(1,svd_pca$v[,1]), resid)
+  
+  if(verbose) {cat("\n Get Rsq")}
+  rsq.vec <- calc.rsq(resid, fit)
+  
+  if(verbose) {cat("\n Rsq 0-1 Normalization")}
+  rsq.vec[is.na(rsq.vec)] <- min(rsq.vec, na.rm=TRUE)
+  wgt <- (rsq.vec-min(rsq.vec))/(max(rsq.vec)-min(rsq.vec)) #0-1 normalization
+  
+  if(verbose) {cat("\n Obtain weighted log-transformed read counts")}
+  tlY = t(lY)*wgt # weigh each row (gene) with respect to its Rsq value.
+  
+  if(verbose) {cat("\n Perform SVD on weighted log-transformed read counts")}
+  sv <- irlba::irlba(tlY-rowMeans(tlY), 1, tol=tol)$v[,1]
+  
+  if(permute==TRUE){
+    if(verbose) {cat("\n Assess the significance of the contribution of SV")}
+    if(is.null(num.sv.permtest)){
+      svd.res.obs <- svd(tresid - rowMeans(tresid))
+    } else {
+      svd.res.obs <- irlba::irlba(tresid-rowMeans(tresid), num.sv.permtest, tol=tol)
+    }
+
+    pc.stat.obs <- svd.res.obs$d[1]^2/sum(svd.res.obs$d^2)
+    if(verbose) {cat("\n PC test statistic value:", pc.stat.obs)}
+    
+    # Generate an empirical null distribution of the PC test statistic.
+    pc.stat.null.vec <- rep(0, num.p)
+    permute.svd <- permute.svd.factory(lY, X, num.sv.permtest, tol, verbose)
+    if (threads > 1) {
+      threads <- min(threads, parallel::detectCores()-1)
+      cl <- parallel::makeCluster(threads)
+      pc.stat.null.vec <- tryCatch(parallel::parSapply(cl, 1:num.p, permute.svd), error=function(err){parallel::stopCluster(cl); stop(err)})
+      parallel::stopCluster(cl)
+    } else {
+      pc.stat.null.vec <- sapply(1:num.p, permute.svd)
+    }
+    if(verbose) {cat("\n Empirical null distribution of the PC statistic:", sort(pc.stat.null.vec))}
+    pval <- sum(pc.stat.obs <= pc.stat.null.vec)/(num.p+1)
+    if(verbose) {cat("\n Permutation p-value:", pval)}
+  } else {
+    pc.stat.obs <- -1
+    pval <- -1
+  }
+  return(list(sv=sv, pc.stat.obs=pc.stat.obs, pval=pval, wgt=wgt))
+}
+
+calc.rsq <- function(resid, fit) {
+  RSS <- colSums(resid(fit)^2)
+  TSS <- colSums(t(t(resid) - colSums(resid)/ncol(resid)) ^ 2)  # vectorized
+  # TSS <- colSums(sweep(resid, 2, mean, "-") ^ 2)  # alt-2
+  return(1-(RSS/(nrow(resid)-2))/(TSS/(nrow(resid)-1)))
+}
+
+permute.svd.factory <- function(lY, X, num.sv.permtest, tol, verbose) {
+  
+  permute.svd <- function(i) {
+    permuted.lY <- apply(t(lY), 1, sample, replace=FALSE)
+    tresid.null <- t(resid(.lm.fit(cbind(1,X), permuted.lY)))
+    if(is.null(num.sv.permtest)) {
+      svd.res.null <- svd(tresid.null)
+    } else {
+      svd.res.null <- irlba::irlba(tresid.null, num.sv.permtest, tol=tol)
+    }
+    return(svd.res.null$d[1]^2/sum(svd.res.null$d^2))
+  }
+  
+  return(permute.svd)
+}
+
+```
+
+## Load the islet single cell RNA-Seq data
+```{r load_data, echo=TRUE}
+data("Lawlor_Islet_scRNAseq_Read_Counts")
+data("Lawlor_Islet_scRNAseq_Annotations")
+ls()
+counts <- Lawlor_Islet_scRNAseq_Read_Counts
+anns <- Lawlor_Islet_scRNAseq_Annotations
+dim(anns)
+dim(counts)
+
+summary(anns)
+ContCoef(table(anns$Gender, anns$Cell_Type))
+ContCoef(table(anns$Phenotype, anns$Cell_Type))
+ContCoef(table(anns$Race, anns$Cell_Type))
+ContCoef(table(anns$Patient_ID, anns$Cell_Type))
+ContCoef(table(anns$Batch, anns$Cell_Type))
+```
+
+#### Look at mean variance relationship
+```{r mean_var_relationship, eval=TRUE, include=TRUE, warning=FALSE}
+plot(rowMeans(log(counts+1)),rowVars(log(counts+1)),pch=19,col=color.vec[2])
+```
+
+#### Estimate zero inflated negative binomial parameters from the islet data
+```{r param_estimation, eval=TRUE}
+## Estimate the zero inflated negative binomial parameters
+params = get_params(counts)
+```
+<br>
+
+#### Generate a data set with three correlated hidden factor and one known factor.
+Here we compare unsupervised SVA, supervised SVA and IA-SVA 
+```{r simulate_data, eval=TRUE}
+set.seed(1234) #5000
+sample.size <- 50
+num.genes <- 10000
+prop.kfactor.genes <- 0.2    #known factor
+prop.hfactor1.genes <- 0.1   #hidden factor1
+
+num.kfactor.genes <- num.genes*prop.kfactor.genes
+num.hfactor1.genes <- num.genes*prop.hfactor1.genes
+
+factor.prop <- 0.5
+kfactor = c(rep(-1,each=sample.size*factor.prop),rep(1,each=sample.size-(sample.size*factor.prop)))
+coinflip = rbinom(sample.size,size=1,prob=0.8)
+hfactor1 = kfactor*coinflip + -kfactor*(1-coinflip)
+
+cor(cbind(kfactor,hfactor1))
+
+hfactor.mat <- cbind(hfactor1)
+kfcoeffs = c(rnorm(num.kfactor.genes),rep(0,num.genes-num.kfactor.genes))
+nullindex= (num.kfactor.genes+1):num.genes
+
+overlap.prop <- 0.99
+
+#hfcoeffs1 = c(rep(0,num.kfactor.genes*(1-overlap.prop)),rnorm(num.hfactor1.genes,sd=1),rep(0,num.genes-num.kfactor.genes*(1-overlap.prop)-num.hfactor1.genes))
+hfcoeffs1 = c(rep(0,num.kfactor.genes-num.hfactor1.genes*overlap.prop),rnorm(num.hfactor1.genes,sd=1),rep(0,num.genes-(num.kfactor.genes-num.hfactor1.genes*overlap.prop)-num.hfactor1.genes))
+
+par(mfrow=c(2,1))
+plot(kfcoeffs)
+plot(hfcoeffs1)
+par(mfrow=c(1,1))
+
+coeffs = cbind(hfcoeffs1,kfcoeffs)
+controls = (hfcoeffs1!=0)&(kfcoeffs==0)
+plot(controls)
+mod = model.matrix(~-1 + hfactor1 + kfactor)
+
+dat0 = create_read_numbers(params$mu,params$fit,
+                                     params$p0,beta=coeffs,mod=mod)
+sum(dat0==0)/length(dat0)
+filter = apply(dat0, 1, function(x) length(x[x>5])>=2)
+dat0 = dat0[filter,]
+sum(dat0==0)/length(dat0)
+controls <- controls[filter]
+
+dim(dat0)
+dim(mod)
+```
+
+```{r hidden_factor_estimation, eval=TRUE, fig.height=10, fig.width=8}
+## Set null and alternative models
+mod1 = model.matrix(~kfactor)
+mod0 = cbind(mod1[,1])
+
+### iasva 
+#batch_iasva <- iasva(t(dat0), group, permute=F, num.sv=3)$sv
+hfactors_iasva.res <- iasva.tmp(t(dat0), kfactor, num.sv=1, permute=F)
+hfactors_iasva <- hfactors_iasva.res$sv
+cor(hfactor1,hfactors_iasva)
+filter2 <- hfcoeffs1[filter]!=0
+par(mfrow=c(4,1))
+plot(kfcoeffs[filter], xlim=c(0,2500))
+plot(hfcoeffs1[filter], xlim=c(0,2500))
+plot(hfactors_iasva.res$wgt.mat, xlim=c(0,2500))
+#plot(filter)
+plot(filter2, xlim=c(0,2500))
+par(mfrow=c(1,1))
+
+
+plot(abs(hfcoeffs1[filter][filter2])/abs(kfcoeffs[filter][filter2]), hfactors_iasva.res$wgt.mat[filter][filter2])
+
+plot(abs(hfcoeffs1[filter][filter2]), hfactors_iasva.res$wgt.mat[filter][filter2])
+
+score.df1 <- data.frame(kfcoeffs=kfcoeffs[filter], hfcoeffs=hfcoeffs1[filter], rsq=as.vector(hfactors_iasva.res$wgt.mat))
+plot(abs(score.df1$kfcoeffs),score.df1$rsq)
+plot(abs(score.df1$hfcoeffs),score.df1$rsq)
+sub.score.df1 <- subset(score.df1, rsq>0.5)
+plot(abs(sub.score.df1$kfcoeffs),sub.score.df1$rsq)
+cor(abs(sub.score.df1$kfcoeffs),sub.score.df1$rsq)
+plot(abs(sub.score.df1$hfcoeffs),sub.score.df1$rsq)
+cor(abs(sub.score.df1$hfcoeffs),sub.score.df1$rsq)
+plot(log(abs(sub.score.df1$hfcoeffs)/abs(sub.score.df1$kfcoeffs)), sub.score.df1$rsq )
+cor(log(abs(sub.score.df1$hfcoeffs)/abs(sub.score.df1$kfcoeffs)), sub.score.df1$rsq , use="complete.obs")
+
+
+score.df2 <- data.frame(kfcoeffs=kfcoeffs[filter][filter2], hfcoeffs=hfcoeffs1[filter][filter2], rsq=hfactors_iasva.res$wgt.mat[filter2])
+plot(abs(score.df2$kfcoeffs),score.df2$rsq)
+plot(abs(score.df2$hfcoeffs),score.df2$rsq)
+cor(abs(score.df2$hfcoeffs),score.df2$rsq)
+plot(log(abs(score.df2$hfcoeffs)/abs(score.df2$kfcoeffs)), score.df2$rsq )
+
+sub.score.df2 <- subset(score.df2, rsq>0.5)
+plot(abs(sub.score.df2$kfcoeffs),sub.score.df2$rsq)
+cor(abs(sub.score.df2$kfcoeffs),sub.score.df2$rsq)
+plot(abs(sub.score.df2$hfcoeffs),sub.score.df2$rsq)
+cor(abs(sub.score.df2$hfcoeffs),sub.score.df2$rsq)
+plot(log(abs(sub.score.df2$hfcoeffs)/abs(sub.score.df2$kfcoeffs)), sub.score.df2$rsq )
+cor(log(abs(sub.score.df2$hfcoeffs)/abs(sub.score.df2$kfcoeffs)), sub.score.df2$rsq , use="complete.obs")
+
+
+## Estimate batch with pca
+ldat0 = log(dat0 + 1)
+hfactors_pca = svd(ldat0 - rowMeans(ldat0))$v[,1]
+cor(hfactor1,hfactors_pca)
+
+## Estimate batch with svaseq (unsupervised)
+hfactors_usva = svaseq(dat0,mod1,mod0, n.sv=1)$sv
+cor(hfactor1,hfactors_usva)
+
+## Estimate batch with svaseq (supervised)
+hfactors_ssva = svaseq(dat0,mod1,mod0,controls=controls, n.sv=1)$sv
+cor(hfactor1,hfactors_ssva)
+
+par(mfrow=c(5,1))
+plot(hfactor1)
+plot(hfactors_iasva)
+plot(hfactors_pca)
+plot(hfactors_usva)
+plot(hfactors_ssva)
+par(mfrow=c(1,1))
+
+```
+
+```{r comp_figures, eval=TRUE, include=TRUE, warning=FALSE, fig.width=8, fig.height=12}
+## Plot the results
+par(mfrow=c(5,1))
+plot(hfactor1,col=color.vec[1],pch=19,main="Hidden Factor1")
+plot(hfactors_iasva,pch=19,col=color.vec[2],main="IA-SVA")
+plot(hfactors_pca,pch=19, col=color.vec[3],main="PCA")
+plot(hfactors_usva,pch=19,col=color.vec[4],main="USVA")
+plot(hfactors_ssva,pch=19,col=color.vec[5],main="SSVA")
+par(mfrow=c(1,1))
+```
+<br>
+
+
+```{r multiple_prop_sim, eval=TRUE, include=TRUE, warning=FALSE}
+
+set.seed(4000)
+sample.size <- 50
+num.genes <- 10000
+prop.kfactor.genes <- 0.2    #known factor
+prop.hfactor1.genes <- 0.1   #hidden factor1
+
+num.kfactor.genes <- num.genes*prop.kfactor.genes
+num.hfactor1.genes <- num.genes*prop.hfactor1.genes
+
+factor.prop <- 0.5
+kfactor = c(rep(-1,each=sample.size*factor.prop),rep(1,each=sample.size-(sample.size*factor.prop)))
+coinflip = rbinom(sample.size,size=1,prob=0.9)
+hfactor1 = kfactor*coinflip + -kfactor*(1-coinflip)
+
+cor(cbind(kfactor,hfactor1))
+
+overlap.prop.vec <- c(0.99,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1,0)
+
+data.list <- list()
+controls.list <- list()
+
+hfactor.mat <- cbind(hfactor1)
+kfbetas <- rnorm(num.kfactor.genes)
+hfbetas <- rnorm(num.hfactor1.genes)  
+
+kfcoeffs = c(rnorm(num.kfactor.genes),rep(0,num.genes-num.kfactor.genes))
+nullindex= (num.kfactor.genes+1):num.genes
+
+pdf("gene_overlap.pdf", width = 10, height=5)
+for(i in 1:length(overlap.prop.vec)){
+
+  #hfcoeffs1 = c(rep(0,num.kfactor.genes*(1-overlap.prop.vec[i])),rnorm(num.hfactor1.genes,sd=1),rep(0,num.genes-num.kfactor.genes*(1-overlap.prop.vec[i])-num.hfactor1.genes))
+
+  hfcoeffs1 = c(rep(0,num.kfactor.genes-num.hfactor1.genes*overlap.prop.vec[i]),hfbetas,rep(0,num.genes-(num.kfactor.genes-num.hfactor1.genes*overlap.prop.vec[i])-num.hfactor1.genes))
+  
+  coeffs = cbind(hfcoeffs1,kfcoeffs)
+  controls = (hfcoeffs1!=0)&(kfcoeffs==0)
+  mod = model.matrix(~-1 + hfactor1 + kfactor)
+
+  dat0 = create_read_numbers(params$mu,params$fit,
+                                       params$p0,beta=coeffs,mod=mod)
+  sum(dat0==0)/length(dat0)
+  filter = apply(dat0, 1, function(x) length(x[x>5])>=2)
+  dat0 = dat0[filter,]
+  sum(dat0==0)/length(dat0)
+  controls.list[[i]] <- controls[filter]
+
+  dim(dat0)
+  dim(mod)
+  data.list[[i]] <- dat0
+  par(mfrow=c(2,1))
+  print(plot(kfcoeffs))
+  print(plot(hfcoeffs1))
+}
+dev.off()
+
+
+```
+
+```{r multiple_prop_sim_factor_estimation, eval=TRUE, include=TRUE, warning=FALSE}
+
+## Set null and alternative models
+mod1 = model.matrix(~kfactor)
+mod0 = cbind(mod1[,1])
+hfactors_iasva_list <- list()
+hfactors_pca_list <- list()
+hfactors_usva_list <- list()
+hfactors_ssva_list <- list()
+for(i in 1:length(overlap.prop.vec)){
+  dat0 <- data.list[[i]]
+  ### iasva 
+  hfactors_iasva_list[[i]] <- iasva(t(dat0), kfactor, num.sv=1, permute = F)$sv
+  ## Estimate batch with pca
+  ldat0 = log(dat0 + 1)
+  hfactors_pca_list[[i]] = svd(ldat0 - rowMeans(ldat0))$v[,1]
+  ## Estimate batch with svaseq (unsupervised)
+  hfactors_usva_list[[i]] = svaseq(dat0,mod1,mod0,n.sv=1)$sv[,1]
+  ## Estimate batch with svaseq (supervised)
+  hfactors_ssva_list[[i]] = svaseq(dat0,mod1,mod0,n.sv=1,controls=controls.list[[i]])$sv[,1]
+  cat(i,"\n")
+}
+```
+
+```{r assess_estimation_accuracy, eval=TRUE}
+
+iasva.cor.vec <- as.vector(abs(cor(hfactor1, do.call(cbind, hfactors_iasva_list))))
+pca.cor.vec <- as.vector(abs(cor(hfactor1, do.call(cbind, hfactors_pca_list))))
+usva.cor.vec <- as.vector(abs(cor(hfactor1, do.call(cbind, hfactors_usva_list))))
+ssva.cor.vec <- as.vector(abs(cor(hfactor1, do.call(cbind, hfactors_ssva_list))))
+
+cor.df <- data.frame(overlap.pct = 100*overlap.prop.vec,
+                     IASVA = iasva.cor.vec,
+                     PCA = pca.cor.vec,
+                     USVA = usva.cor.vec,
+                     SSVA = ssva.cor.vec)
+
+melt.cor.df <- melt(cor.df, id.var=c("overlap.pct"))
+#colnames(melt.cor.df) <- c("Overlap Percentage","Method","Absolute Corrlation Coefficient")
+
+p <- ggplot(melt.cor.df, aes(x=overlap.pct, y=value, group=variable))
+p <- p + geom_line(aes(col=variable), size=1)
+p <- p + geom_point(aes(col=variable), size=3)
+p <- p + xlab("Gene Set Overlap Percentage")
+p <- p + ylab("Absolute Correlation Coefficient")
+#p <- p + scale_color_manual(values=color.vec)
+p <- p + scale_color_brewer(palette = "Spectral", name="Method")
+p <- p + theme_bw()
+p <- p + theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+               #panel.grid.minor = element_blank(), 
+               axis.line = element_line(colour = "black"))
+p
+
+ggsave("absCor_gene_overlap_pct.pdf", width=8, height=5)
+
+```
+
+```{r cal_avg_corr, eval=TRUE}
+org.corr <- abs(cor(cbind(kfactor,hfactor.mat)))
+
+iasva.avg.cor.mat <- matrix(rep(0,16),nrow=4)
+pca.avg.cor.mat <- matrix(rep(0,16),nrow=4)
+usva.avg.cor.mat <- matrix(rep(0,16),nrow=4)
+ssva.avg.cor.mat <- matrix(rep(0,16),nrow=4)
+for(i in 1:num.sims){
+  iasva.avg.cor.mat <- iasva.avg.cor.mat + abs(cor(cbind(kfactor,hfactors_iasva_list[[i]])))/num.sims
+  pca.avg.cor.mat <- pca.avg.cor.mat + abs(cor(cbind(kfactor,hfactors_pca_list[[i]])))/num.sims
+  usva.avg.cor.mat <- usva.avg.cor.mat + abs(cor(cbind(kfactor,hfactors_usva_list[[i]])))/num.sims
+  ssva.avg.cor.mat <- ssva.avg.cor.mat + abs(cor(cbind(kfactor,hfactors_ssva_list[[i]])))/num.sims
+}
+
+colnames(org.corr) <- c("KF","HF1","HF2","HF3")
+colnames(iasva.avg.cor.mat) <- c("KF","HF1","HF2","HF3")
+colnames(pca.avg.cor.mat) <- c("KF","HF1","HF2","HF3")
+colnames(usva.avg.cor.mat) <- c("KF","HF1","HF2","HF3")
+colnames(ssva.avg.cor.mat) <- c("KF","HF1","HF2","HF3")
+
+pdf(file="factor_correlations_comparison.pdf", width=8, height=8)
+par(mfrow=c(2,2))
+corrplot.mixed(org.corr, lower="ellipse", upper="number", title="Simulated factor correlations", mar=c(0,0,1,0))
+corrplot.mixed(iasva.avg.cor.mat, lower="ellipse", upper="number", title="Correlations inferred by IA-SVA", mar=c(0,0,1,0))
+corrplot.mixed(usva.avg.cor.mat, lower="ellipse", upper="number", title="Correlations inferred by USVA", mar=c(0,0,1,0))
+corrplot.mixed(ssva.avg.cor.mat, lower="ellipse", upper="number", title="Correlations inferred by SSVA", mar=c(0,0,1,0))
+dev.off()
+par(mfrow=c(1,1))
+```
