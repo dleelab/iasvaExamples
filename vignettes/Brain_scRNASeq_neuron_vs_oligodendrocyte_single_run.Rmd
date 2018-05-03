@@ -1,15 +1,22 @@
 ---
-title: "Performance assessment of IA-SVA using Brain scRNA-Seq data"
+title: ""
 author: "Donghyung Lee & Duygu Ucar"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteIndexEntry{"Performance assessment of IA-SVA using Brain scRNA-Seq data"}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-Here, we becnhmark several factor analyses methods on single cell RNA sequencing (scRNA-Seq) data obtained from human human brain samples  ([Darmanis et. al., 2015](http://www.pnas.org/content/112/23/7285.long)). All of these methods are used to uncover variation associated with different cell types and compared against each other. This dataset is included in an R data package ("iasvaExamples") containing data examples for IA-SVA (https://github.com/dleelab/iasvaExamples). To install the 'iasvaExamples' package, follow the instructions provided in the GitHub page.
+Here, we becnhmark several factor analyses methods on single cell RNA
+sequencing (scRNA-Seq) data obtained from human human brain samples 
+([Darmanis et. al., 2015](http://www.pnas.org/content/112/23/7285.long)). 
+All of these methods are used to uncover variation associated with different 
+cell types and compared against each other. This dataset is included in an R 
+data package ("iasvaExamples") containing data examples for IA-SVA
+(https://github.com/dleelab/iasvaExamples). To install the 'iasvaExamples'
+package, follow the instructions provided in the GitHub page.
 
 ## Load packages
 ```{r load_packages, echo=TRUE, message=FALSE}
@@ -25,14 +32,11 @@ library(DescTools) #pcc i.e., Pearson's contingency coefficient
 library(RColorBrewer)
 library(zinbwave)
 library(nnet)
-
+library(SummarizedExperiment)
 color.vec <- brewer.pal(8, "Set1")
-
-# Set you output directory
-setwd("~/Dropbox/projects/IA-SVA/Darmanis_Brain")
 set.seed(3532379)
-
-# To make the task more challenging we selected 1000 genes to be used in downstream analyses. 
+# To make the task more challenging we selected 
+  #1000 genes to be used in downstream analyses. 
 num.genes <- 1000
 
 ```
@@ -57,15 +61,16 @@ ContCoef(table(anns.total$sample_name, anns.total$cell_type))
 table(anns.total$c1_chip_id, anns.total$cell_type)
 ContCoef(table(anns.total$c1_chip_id, anns.total$cell_type))
 ```
-The annotations describing samples and experimental settings are stored in "anns" and the read counts information is stored in "counts". 
+The annotations describing samples and experimental settings are stored 
+in "anns" and the read counts information is stored in "counts". 
 
 For the downstream analyses, select neurons, oligodendrcytes and astrocytes from 2 cell types and 8 individuals. 
 ```{r neurons_oliodendrocytes, echo=TRUE, results='asis'}
 # Select neurons and astrocytes for downstream analyses
-selected.cells <- intersect(which(anns.total$tissue=="cortex"), which(anns.total$cell_type=="neurons"|anns.total$cell_type=="astrocytes"))
+selected.cells <- intersect(which(anns.total$tissue=="cortex"),
+                            which(anns.total$cell_type=="neurons"|anns.total$cell_type=="astrocytes"))
 counts <- counts.total[, selected.cells]
 anns <- droplevels(anns.total[selected.cells,])
-
 table(anns$tissue, anns$cell_type)
 table(anns$tissue, anns$age)
 table(anns$age, anns$sample_name)
@@ -73,18 +78,14 @@ table(anns$age, anns$c1_chip_id)
 table(anns$tissue, anns$c1_chip_id)
 table(anns$cell_type, anns$sample_name)
 table(anns$cell_type, anns$tissue)
-
 dim(counts)
 dim(anns)
-
 dropout.rate <- sum(counts==0)/(dim(counts)[1]*dim(counts)[2])*100
 dropout.rate
-
 ## Filter out lowly-expressed genes 
 filter = apply(counts, 1, function(x) length(x[x>5])>=3)
 counts = as.matrix(counts[filter,])
 dim(counts)
-
 dropout.rate <- sum(counts==0)/(dim(counts)[1]*dim(counts)[2])*100
 dropout.rate
 
@@ -101,7 +102,15 @@ Samples <- as.integer(anns$sample_name)
 ```
 
 ## Calculate geometric library size, i.e., library size of log-transfromed read counts 
-It is well known that the geometric library size (i.e., library size of log-transfromed read counts) or proportion of expressed genes in each cell explains very large portion of variability of scRNA-Seq data ([Hicks et. al. 2015 BioRxiv](http://biorxiv.org/content/early/2015/08/25/025528), [McDavid et. al. 2016 Nature Biotechnology](http://www.nature.com/nbt/journal/v34/n6/full/nbt.3498.html)). Frequently, the first principal component of log-transformed scRNA-Seq read counts is highly correlated with the geometric library size. (r > 0.9). Here, we calculate it and show the high correlation. Later this vector will be used as an known factor in IA-SVA algorithm.
+It is well known that the geometric library size 
+(i.e., library size of log-transfromed read counts) or proportion of 
+expressed genes in each cell explains very large portion of variability 
+of scRNA-Seq data ([Hicks et. al. 2015 BioRxiv](http://biorxiv.org/content/early/2015/08/25/025528),
+[McDavid et. al. 2016 Nature Biotechnology](http://www.nature.com/nbt/journal/v34/n6/full/nbt.3498.html)).
+Frequently, the first principal component of log-transformed scRNA-Seq read counts is 
+highly correlated with the geometric library size. (r > 0.9). Here, we calculate it 
+and show the high correlation. Later this vector will be used as an known factor in
+IA-SVA algorithm.
 
 ```{r geno_lib_size, echo=TRUE, fig.width=6, fig.height=4}
 Geo_Lib_Size <- colSums(log(counts+1))
@@ -113,18 +122,19 @@ cor(Geo_Lib_Size, Cell_Type_Num)
 ```
 ## run analyses
 
-Library size, tissue, and sample ID are used as covariates in all factor analyses except for PCA.
-3 SVs are captured with each method and the SV that has the maximum correlation with the cell type assignments is selected among these 3. This is especially important for a fair comparison of PCA. 
+Library size, tissue, and sample ID are used as covariates in
+all factor analyses except for PCA. 3 SVs are captured with each method 
+and the SV that has the maximum correlation with the cell type assignments
+is selected among these 3. This is especially important for
+a fair comparison of PCA. 
 
 ```{r run_analyses, fig.width=6, fig.height=6}
 mod1 = model.matrix(~Geo_Lib_Size+anns$sample_name)
 mod0 = cbind(mod1[,1])
-
-###Estimate Hidden factors using different methods
-
+summ_exp <- SummarizedExperiment(assays = counts)
 ### IA-SVA 
 start_time <- Sys.time()
-iasva.res<- iasva(t(counts), mod1[,-1],verbose=FALSE, permute=FALSE, num.sv=3)
+iasva.res<- iasva(summ_exp, mod1[,-1],verbose=FALSE, permute=FALSE, num.sv=3)
 end_time <- Sys.time()
 iasva.time <- start_time - end_time
 iasva.sv <- iasva.res$sv
@@ -161,7 +171,6 @@ max.cor.usva <- which.is.max(c (abs(cor(usva.sv[,1], Cell_Type_Num)),
 max.cor.usva
 
 ### RUVres
-#x <- as.factor(Tissue)
 design <- model.matrix(~Geo_Lib_Size+anns$sample_name)
 start_time <- Sys.time()
 y <- DGEList(counts=counts)
@@ -227,9 +236,13 @@ max.cor.zinb
 Compare results from different methods to the true cell type assignments using correlation plots.
 ```{r plot_cor, fig.width=6, fig.height=6}
 ## Plot correlation between true cell_type and estimates (SV1)
-celltype.est = cbind(Cell_Type_Num, iasva.sv[,max.cor.iasva],pca.sv[,max.cor.pca],usva.sv[,max.cor.usva], ruvres.sv[,max.cor.ruvres], ruvemp.sv[,max.cor.ruvemp], W[,max.cor.zinb])
+celltype.est = cbind(Cell_Type_Num, iasva.sv[,max.cor.iasva],
+                     pca.sv[,max.cor.pca],usva.sv[,max.cor.usva], 
+                     ruvres.sv[,max.cor.ruvres], 
+                     ruvemp.sv[,max.cor.ruvemp], W[,max.cor.zinb])
 
-colnames(celltype.est) = c("Cell Type","IA-SVA","PCA","USVA","RUVres","RUVemp", "ZINB-WAVE")
+colnames(celltype.est) = c("Cell Type","IA-SVA","PCA","USVA",
+                           "RUVres","RUVemp", "ZINB-WAVE")
 corr = abs(cor(celltype.est))
 print(corr)
 cols = colorRampPalette(c(color.vec[2],"white",color.vec[1]))
