@@ -11,7 +11,7 @@
 
 <meta name="author" content="Donghyung Lee" />
 
-<meta name="date" content="2018-04-30" />
+<meta name="date" content="2018-05-04" />
 
 <title>scRNA-seq data simulation</title>
 
@@ -36,7 +36,7 @@ if (window.hljs) {
   hljs.configure({languages: []});
   hljs.initHighlightingOnLoad();
   if (document.readyState && document.readyState === "complete") {
-    window.setTimeout(function() { hljs.initHighlightingOnLoad(); }, 0);
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
   }
 }
 </script>
@@ -121,7 +121,7 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">scRNA-seq data simulation</h1>
 <h4 class="author"><em>Donghyung Lee</em></h4>
-<h4 class="date"><em>2018-04-30</em></h4>
+<h4 class="date"><em>2018-05-04</em></h4>
 
 </div>
 
@@ -132,12 +132,12 @@ $(document).ready(function () {
 <pre class="r"><code>rm(list=ls())
 library(iasva)
 library(iasvaExamples)
-library(polyester)</code></pre>
-<pre><code>## Warning: package 'polyester' was built under R version 3.4.3</code></pre>
-<pre class="r"><code>library(sva)
+library(polyester)
+library(sva)
 library(corrplot)
 library(DescTools) #pcc i.e., Pearson's contingency coefficient
 library(RColorBrewer)
+library(SummarizedExperiment)
 color.vec &lt;- brewer.pal(8, &quot;Set1&quot;)</code></pre>
 </div>
 <div id="load-the-islet-single-cell-rna-seq-data-n638-cells-and-26k-genes" class="section level2">
@@ -333,7 +333,8 @@ ssva.res = svaseq(dat0,mod1,mod0,controls=controls)$sv</code></pre>
 <pre class="r"><code>cor(hfactor3, ssva.res[,3])</code></pre>
 <pre><code>## [1] -0.5628941</code></pre>
 <pre class="r"><code>## Estimate hidden factors with IA-SVA
-iasva.res &lt;- iasva(t(dat0), mod1[,-1], num.p=20)$sv # the default number of permutations in SVA = 20</code></pre>
+summ_exp &lt;- SummarizedExperiment(assays = dat0)
+iasva.res &lt;- iasva(summ_exp, mod1[,-1], num.p = 20)$sv # the default number of permutations in SVA = 20</code></pre>
 <pre><code>## IA-SVA running...
 ## SV1 Detected!
 ## SV2 Detected!
@@ -361,45 +362,49 @@ corrplot.mixed(abs(cor(hf3.mat)), tl.pos=&quot;lt&quot;)</code></pre>
 <div id="session-info" class="section level2">
 <h2>Session Info</h2>
 <pre class="r"><code>sessionInfo()</code></pre>
-<pre><code>## R version 3.4.2 (2017-09-28)
+<pre><code>## R version 3.5.0 (2018-04-23)
 ## Platform: x86_64-apple-darwin15.6.0 (64-bit)
-## Running under: macOS Sierra 10.12.6
+## Running under: OS X El Capitan 10.11.6
 ## 
 ## Matrix products: default
-## BLAS: /Library/Frameworks/R.framework/Versions/3.4/Resources/lib/libRblas.0.dylib
-## LAPACK: /Library/Frameworks/R.framework/Versions/3.4/Resources/lib/libRlapack.dylib
+## BLAS: /Library/Frameworks/R.framework/Versions/3.5/Resources/lib/libRblas.0.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/3.5/Resources/lib/libRlapack.dylib
 ## 
 ## locale:
 ## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
 ## 
 ## attached base packages:
-## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## [1] parallel  stats4    stats     graphics  grDevices utils     datasets 
+## [8] methods   base     
 ## 
 ## other attached packages:
-##  [1] RColorBrewer_1.1-2  DescTools_0.99.22   corrplot_0.84      
-##  [4] sva_3.26.0          BiocParallel_1.12.0 genefilter_1.60.0  
-##  [7] mgcv_1.8-22         nlme_3.1-131        polyester_1.14.1   
-## [10] iasvaExamples_1.0.0 iasva_0.99.0       
+##  [1] SummarizedExperiment_1.10.0 DelayedArray_0.6.0         
+##  [3] matrixStats_0.53.1          Biobase_2.40.0             
+##  [5] GenomicRanges_1.32.0        GenomeInfoDb_1.16.0        
+##  [7] IRanges_2.14.1              S4Vectors_0.18.1           
+##  [9] BiocGenerics_0.26.0         RColorBrewer_1.1-2         
+## [11] DescTools_0.99.24           corrplot_0.84              
+## [13] sva_3.28.0                  BiocParallel_1.14.0        
+## [15] genefilter_1.62.0           mgcv_1.8-23                
+## [17] nlme_3.1-137                polyester_1.16.0           
+## [19] iasvaExamples_1.0.0         iasva_0.99.1               
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] splines_3.4.2        lattice_0.20-35      expm_0.999-2        
-##  [4] htmltools_0.3.6      stats4_3.4.2         yaml_2.1.14         
-##  [7] blob_1.1.0           XML_3.98-1.9         survival_2.41-3     
-## [10] rlang_0.1.4          foreign_0.8-69       DBI_0.7             
-## [13] BiocGenerics_0.24.0  bit64_0.9-7          matrixStats_0.52.2  
-## [16] stringr_1.2.0        zlibbioc_1.24.0      Biostrings_2.46.0   
-## [19] mvtnorm_1.0-6        evaluate_0.10.1      memoise_1.1.0       
-## [22] Biobase_2.38.0       knitr_1.17           IRanges_2.12.0      
-## [25] manipulate_1.0.1     irlba_2.3.2          parallel_3.4.2      
-## [28] AnnotationDbi_1.40.0 Rcpp_0.12.13         xtable_1.8-2        
-## [31] backports_1.1.1      limma_3.34.1         S4Vectors_0.16.0    
-## [34] annotate_1.56.1      XVector_0.18.0       bit_1.1-12          
-## [37] digest_0.6.12        stringi_1.1.5        logspline_2.1.9     
-## [40] grid_3.4.2           rprojroot_1.2        tools_3.4.2         
-## [43] bitops_1.0-6         magrittr_1.5         RCurl_1.95-4.10     
-## [46] RSQLite_2.0          tibble_1.3.4         cluster_2.0.6       
-## [49] MASS_7.3-47          Matrix_1.2-11        rmarkdown_1.7       
-## [52] boot_1.3-20          compiler_3.4.2</code></pre>
+##  [1] splines_3.5.0          lattice_0.20-35        expm_0.999-2          
+##  [4] htmltools_0.3.6        yaml_2.1.18            blob_1.1.1            
+##  [7] XML_3.98-1.11          survival_2.42-3        foreign_0.8-70        
+## [10] DBI_1.0.0              bit64_0.9-7            GenomeInfoDbData_1.1.0
+## [13] stringr_1.3.0          zlibbioc_1.26.0        Biostrings_2.48.0     
+## [16] mvtnorm_1.0-7          evaluate_0.10.1        memoise_1.1.0         
+## [19] knitr_1.20             manipulate_1.0.1       irlba_2.3.2           
+## [22] AnnotationDbi_1.42.0   Rcpp_0.12.16           xtable_1.8-2          
+## [25] backports_1.1.2        limma_3.36.0           annotate_1.58.0       
+## [28] XVector_0.20.0         bit_1.1-12             digest_0.6.15         
+## [31] stringi_1.2.2          logspline_2.1.9        grid_3.5.0            
+## [34] rprojroot_1.3-2        tools_3.5.0            bitops_1.0-6          
+## [37] magrittr_1.5           RCurl_1.95-4.10        RSQLite_2.1.0         
+## [40] cluster_2.0.7-1        MASS_7.3-50            Matrix_1.2-14         
+## [43] rmarkdown_1.9          boot_1.3-20            compiler_3.5.0</code></pre>
 </div>
 
 

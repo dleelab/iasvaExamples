@@ -16,6 +16,7 @@ library(sva)
 library(corrplot)
 library(DescTools) #pcc i.e., Pearson's contingency coefficient
 library(RColorBrewer)
+library(SummarizedExperiment)
 color.vec <- brewer.pal(8, "Set1")
 ```
 
@@ -139,7 +140,8 @@ cor(hfactor2, ssva.res[,2])
 cor(hfactor3, ssva.res[,3])
 
 ## Estimate hidden factors with IA-SVA
-iasva.res <- iasva(t(dat0), mod1[,-1], num.p=20)$sv # the default number of permutations in SVA = 20
+summ_exp <- SummarizedExperiment(assays = dat0)
+iasva.res <- iasva(summ_exp, mod1[,-1], num.p = 20)$sv # the default number of permutations in SVA = 20
 cor(hfactor1, iasva.res[,1])
 cor(hfactor2, iasva.res[,2])
 cor(hfactor3, iasva.res[,3])
