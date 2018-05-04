@@ -14,7 +14,7 @@ vignette: >
 #devtools
 library(devtools)
 #iasva
-devtools::install_github("UcarLab/IA-SVA")
+devtools::install_github("UcarLab/iasva")
 #iasvaExamples  
 devtools::install_github("dleelab/iasvaExamples")
 ```
@@ -32,6 +32,7 @@ library(DescTools) #pcc i.e., Pearson's contingency coefficient
 library(RColorBrewer)
 library(reshape2)
 library(ggplot2)
+library(SummarizedExperiment)
 
 #setwd("/Users/ducar/Desktop/GitHub_Projects/iasvaVignettes/Lawlor_Islets/")
 color.vec <- brewer.pal(9, "Set1")
@@ -216,9 +217,11 @@ overlap.prop <- 0.99
 hfcoeffs1 = c(rep(0,num.kfactor.genes-num.hfactor1.genes*overlap.prop),rnorm(num.hfactor1.genes,sd=1),rep(0,num.genes-(num.kfactor.genes-num.hfactor1.genes*overlap.prop)-num.hfactor1.genes))
 
 par(mfrow=c(2,1))
+par(mar=c(1,1,1,1))
 plot(kfcoeffs)
 plot(hfcoeffs1)
 par(mfrow=c(1,1))
+par(mar=c(1,1,1,1))
 
 coeffs = cbind(hfcoeffs1,kfcoeffs)
 controls = (hfcoeffs1!=0)&(kfcoeffs==0)
@@ -394,10 +397,13 @@ hfactors_iasva_list <- list()
 hfactors_pca_list <- list()
 hfactors_usva_list <- list()
 hfactors_ssva_list <- list()
+
 for(i in 1:length(overlap.prop.vec)){
   dat0 <- data.list[[i]]
+  # summarizedExperiment
+  summ_exp <- SummarizedExperiment(assays = dat0)
   ### iasva 
-  hfactors_iasva_list[[i]] <- iasva(t(dat0), kfactor, num.sv=1, permute = F)$sv
+  hfactors_iasva_list[[i]] <- iasva(summ_exp, kfactor, num.sv=1, permute = F)$sv
   ## Estimate batch with pca
   ldat0 = log(dat0 + 1)
   hfactors_pca_list[[i]] = svd(ldat0 - rowMeans(ldat0))$v[,1]
@@ -444,11 +450,11 @@ ggsave("absCor_gene_overlap_pct.pdf", width=8, height=5)
 
 ```{r cal_avg_corr, eval=TRUE}
 org.corr <- abs(cor(cbind(kfactor,hfactor.mat)))
-
-iasva.avg.cor.mat <- matrix(rep(0,16),nrow=4)
-pca.avg.cor.mat <- matrix(rep(0,16),nrow=4)
-usva.avg.cor.mat <- matrix(rep(0,16),nrow=4)
-ssva.avg.cor.mat <- matrix(rep(0,16),nrow=4)
+iasva.avg.cor.mat <- matrix(rep(0,4),nrow=2)
+pca.avg.cor.mat <- matrix(rep(0,4),nrow=2)
+usva.avg.cor.mat <- matrix(rep(0,4),nrow=2)
+ssva.avg.cor.mat <- matrix(rep(0,4),nrow=2)
+num.sims <- 100
 for(i in 1:num.sims){
   iasva.avg.cor.mat <- iasva.avg.cor.mat + abs(cor(cbind(kfactor,hfactors_iasva_list[[i]])))/num.sims
   pca.avg.cor.mat <- pca.avg.cor.mat + abs(cor(cbind(kfactor,hfactors_pca_list[[i]])))/num.sims
