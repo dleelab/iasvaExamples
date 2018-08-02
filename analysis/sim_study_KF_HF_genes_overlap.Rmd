@@ -16,7 +16,7 @@ vignette: >
 #devtools
 library(devtools)
 #iasva
-devtools::install_github("UcarLab/iasva")
+devtools::install_github("UcarLab/IA-SVA")
 #iasvaExamples  
 devtools::install_github("dleelab/iasvaExamples")
 ```
@@ -157,7 +157,6 @@ permute.svd.factory <- function(lY, X, num.sv.permtest, tol, verbose) {
   
   return(permute.svd)
 }
-
 ```
 
 ## Load the islet single cell RNA-Seq data
@@ -178,21 +177,20 @@ ContCoef(table(anns$Patient_ID, anns$Cell_Type))
 ContCoef(table(anns$Batch, anns$Cell_Type))
 ```
 
-## Look at mean variance relationship
-```{r mean_var_relationship, eval=TRUE, include=TRUE, warning=FALSE, fig.width=8, fig.height=6}
+#### Look at mean variance relationship
+```{r mean_var_relationship, eval=TRUE, include=TRUE, warning=FALSE}
 plot(rowMeans(log(counts+1)),rowVars(log(counts+1)),pch=19,col=color.vec[2])
 ```
 
-## Estimate zero inflated negative binomial parameters from the islet data
+#### Estimate zero inflated negative binomial parameters from the islet data
 ```{r param_estimation, eval=TRUE}
 ## Estimate the zero inflated negative binomial parameters
 params = get_params(counts)
 ```
-<br>
 
-## Generate a data set with three correlated hidden factor and one known factor.
+#### Generate a data set affected by two factors (known and unknown).
 Here we compare unsupervised SVA, supervised SVA and IA-SVA 
-```{r simulate_data, eval=TRUE, fig.width=8, fig.height=6}
+```{r simulate_data, eval=TRUE}
 set.seed(1234) #5000
 sample.size <- 50
 num.genes <- 10000
@@ -219,15 +217,12 @@ overlap.prop <- 0.99
 hfcoeffs1 = c(rep(0,num.kfactor.genes-num.hfactor1.genes*overlap.prop),rnorm(num.hfactor1.genes,sd=1),rep(0,num.genes-(num.kfactor.genes-num.hfactor1.genes*overlap.prop)-num.hfactor1.genes))
 
 par(mfrow=c(2,1))
-par(mar=c(1,1,1,1))
 plot(kfcoeffs)
 plot(hfcoeffs1)
 par(mfrow=c(1,1))
-par(mar=c(1,1,1,1))
 
 coeffs = cbind(hfcoeffs1,kfcoeffs)
 controls = (hfcoeffs1!=0)&(kfcoeffs==0)
-plot(controls)
 mod = model.matrix(~-1 + hfactor1 + kfactor)
 
 dat0 = create_read_numbers(params$mu,params$fit,
@@ -242,58 +237,55 @@ dim(dat0)
 dim(mod)
 ```
 
-## Hidden factor estimation
-```{r hidden_factor_estimation, eval=TRUE, fig.height=10, fig.width=8}
+```{r iasva_hidden_factor_estimation, eval=TRUE, fig.height=8, fig.width=8}
 ## Set null and alternative models
 mod1 = model.matrix(~kfactor)
 mod0 = cbind(mod1[,1])
 
 ### iasva 
-#batch_iasva <- iasva(t(dat0), group, permute=F, num.sv=3)$sv
 hfactors_iasva.res <- iasva.tmp(t(dat0), kfactor, num.sv=1, permute=F)
 hfactors_iasva <- hfactors_iasva.res$sv
 cor(hfactor1,hfactors_iasva)
 filter2 <- hfcoeffs1[filter]!=0
-par(mfrow=c(4,1))
-plot(kfcoeffs[filter], xlim=c(0,2500))
-plot(hfcoeffs1[filter], xlim=c(0,2500))
-plot(hfactors_iasva.res$wgt.mat, xlim=c(0,2500))
-#plot(filter)
-plot(filter2, xlim=c(0,2500))
+
+par(mfrow=c(3,1))
+plot(kfcoeffs[filter], xlim=c(0,2500), xlab="Gene Index", ylab="Known Factor Effect Size", cex=1.5)
+plot(hfcoeffs1[filter], xlim=c(0,2500), xlab="Gene Index", ylab="Hidden Factor Effect Size")
+plot(hfactors_iasva.res$wgt.mat, xlim=c(0,2500), xlab="Gene Index", ylab="R squared")
 par(mfrow=c(1,1))
 
 
-plot(abs(hfcoeffs1[filter][filter2])/abs(kfcoeffs[filter][filter2]), hfactors_iasva.res$wgt.mat[filter][filter2])
+pdf("output/GeneOverlap.Fig1.pdf", width = 5, height=8)
+par(mfrow=c(3,1))
+plot(kfcoeffs[filter], xlim=c(0,2500), xlab="Gene Index", ylab="Known Factor Effect Size",cex.lab=1.5,cex.axis=1.5)
+plot(hfcoeffs1[filter], xlim=c(0,2500), xlab="Gene Index", ylab="Hidden Factor Effect Size",cex.lab=1.5,cex.axis=1.5)
+plot(hfactors_iasva.res$wgt.mat, xlim=c(0,2500), xlab="Gene Index", ylab="R squared",cex.lab=1.5,cex.axis=1.5)
+dev.off()
+par(mfrow=c(1,1))
 
-plot(abs(hfcoeffs1[filter][filter2]), hfactors_iasva.res$wgt.mat[filter][filter2])
+```
 
-score.df1 <- data.frame(kfcoeffs=kfcoeffs[filter], hfcoeffs=hfcoeffs1[filter], rsq=as.vector(hfactors_iasva.res$wgt.mat))
-plot(abs(score.df1$kfcoeffs),score.df1$rsq)
-plot(abs(score.df1$hfcoeffs),score.df1$rsq)
-sub.score.df1 <- subset(score.df1, rsq>0.5)
-plot(abs(sub.score.df1$kfcoeffs),sub.score.df1$rsq)
-cor(abs(sub.score.df1$kfcoeffs),sub.score.df1$rsq)
-plot(abs(sub.score.df1$hfcoeffs),sub.score.df1$rsq)
-cor(abs(sub.score.df1$hfcoeffs),sub.score.df1$rsq)
-plot(log(abs(sub.score.df1$hfcoeffs)/abs(sub.score.df1$kfcoeffs)), sub.score.df1$rsq )
-cor(log(abs(sub.score.df1$hfcoeffs)/abs(sub.score.df1$kfcoeffs)), sub.score.df1$rsq , use="complete.obs")
+```{r iasva_results_analysis, eval=TRUE, fig.height=8, fig.width=8}
+overlap.hfcoeffs1 <- hfcoeffs1[filter][filter2]
+overlap.kfcoeffs <- kfcoeffs[filter][filter2]
+overlap.R2 <- hfactors_iasva.res$wgt.mat[filter2]
 
+summary(lm(overlap.R2~overlap.hfcoeffs1+overlap.kfcoeffs))
 
-score.df2 <- data.frame(kfcoeffs=kfcoeffs[filter][filter2], hfcoeffs=hfcoeffs1[filter][filter2], rsq=hfactors_iasva.res$wgt.mat[filter2])
-plot(abs(score.df2$kfcoeffs),score.df2$rsq)
-plot(abs(score.df2$hfcoeffs),score.df2$rsq)
-cor(abs(score.df2$hfcoeffs),score.df2$rsq)
-plot(log(abs(score.df2$hfcoeffs)/abs(score.df2$kfcoeffs)), score.df2$rsq )
+par(mfrow=c(2,1))
+plot(overlap.hfcoeffs1, overlap.R2, xlab="Hidden Factor Effect Size", ylab="R squared")
+plot(overlap.kfcoeffs, overlap.R2, xlab="Known Factor Effect Size", ylab="R squared")
+par(mfrow=c(1,1))
 
-sub.score.df2 <- subset(score.df2, rsq>0.5)
-plot(abs(sub.score.df2$kfcoeffs),sub.score.df2$rsq)
-cor(abs(sub.score.df2$kfcoeffs),sub.score.df2$rsq)
-plot(abs(sub.score.df2$hfcoeffs),sub.score.df2$rsq)
-cor(abs(sub.score.df2$hfcoeffs),sub.score.df2$rsq)
-plot(log(abs(sub.score.df2$hfcoeffs)/abs(sub.score.df2$kfcoeffs)), sub.score.df2$rsq )
-cor(log(abs(sub.score.df2$hfcoeffs)/abs(sub.score.df2$kfcoeffs)), sub.score.df2$rsq , use="complete.obs")
+pdf("output/GeneOverlap.Fig2.pdf", width = 5, height=8)
+par(mfrow=c(2,1))
+plot(overlap.hfcoeffs1, overlap.R2, xlab="Hidden Factor Effect Size", ylab="R squared")
+plot(overlap.kfcoeffs, overlap.R2, xlab="Known Factor Effect Size", ylab="R squared")
+dev.off()
+par(mfrow=c(1,1))
+```
 
-
+```{R alternative_hidden_factor_estimation, eval=TRUE}
 ## Estimate batch with pca
 ldat0 = log(dat0 + 1)
 hfactors_pca = svd(ldat0 - rowMeans(ldat0))$v[,1]
@@ -306,14 +298,6 @@ cor(hfactor1,hfactors_usva)
 ## Estimate batch with svaseq (supervised)
 hfactors_ssva = svaseq(dat0,mod1,mod0,controls=controls, n.sv=1)$sv
 cor(hfactor1,hfactors_ssva)
-
-par(mfrow=c(5,1))
-plot(hfactor1)
-plot(hfactors_iasva)
-plot(hfactors_pca)
-plot(hfactors_usva)
-plot(hfactors_ssva)
-par(mfrow=c(1,1))
 
 ```
 
@@ -363,8 +347,6 @@ nullindex= (num.kfactor.genes+1):num.genes
 pdf("output/gene_overlap.pdf", width = 10, height=5)
 for(i in 1:length(overlap.prop.vec)){
 
-  #hfcoeffs1 = c(rep(0,num.kfactor.genes*(1-overlap.prop.vec[i])),rnorm(num.hfactor1.genes,sd=1),rep(0,num.genes-num.kfactor.genes*(1-overlap.prop.vec[i])-num.hfactor1.genes))
-
   hfcoeffs1 = c(rep(0,num.kfactor.genes-num.hfactor1.genes*overlap.prop.vec[i]),hfbetas,rep(0,num.genes-(num.kfactor.genes-num.hfactor1.genes*overlap.prop.vec[i])-num.hfactor1.genes))
   
   coeffs = cbind(hfcoeffs1,kfcoeffs)
@@ -400,13 +382,10 @@ hfactors_iasva_list <- list()
 hfactors_pca_list <- list()
 hfactors_usva_list <- list()
 hfactors_ssva_list <- list()
-
 for(i in 1:length(overlap.prop.vec)){
   dat0 <- data.list[[i]]
-  # summarizedExperiment
-  summ_exp <- SummarizedExperiment(assays = dat0)
   ### iasva 
-  hfactors_iasva_list[[i]] <- iasva(summ_exp, kfactor, num.sv=1, permute = F)$sv
+  hfactors_iasva_list[[i]] <- iasva(t(dat0), kfactor, num.sv=1, permute = F)$sv
   ## Estimate batch with pca
   ldat0 = log(dat0 + 1)
   hfactors_pca_list[[i]] = svd(ldat0 - rowMeans(ldat0))$v[,1]
@@ -432,7 +411,6 @@ cor.df <- data.frame(overlap.pct = 100*overlap.prop.vec,
                      SSVA = ssva.cor.vec)
 
 melt.cor.df <- melt(cor.df, id.var=c("overlap.pct"))
-#colnames(melt.cor.df) <- c("Overlap Percentage","Method","Absolute Corrlation Coefficient")
 
 p <- ggplot(melt.cor.df, aes(x=overlap.pct, y=value, group=variable))
 p <- p + geom_line(aes(col=variable), size=1)
@@ -449,34 +427,4 @@ p
 
 ggsave("output/absCor_gene_overlap_pct.pdf", width=8, height=5)
 
-```
-
-```{r cal_avg_corr, eval=TRUE}
-org.corr <- abs(cor(cbind(kfactor,hfactor.mat)))
-iasva.avg.cor.mat <- matrix(rep(0,4),nrow=2)
-pca.avg.cor.mat <- matrix(rep(0,4),nrow=2)
-usva.avg.cor.mat <- matrix(rep(0,4),nrow=2)
-ssva.avg.cor.mat <- matrix(rep(0,4),nrow=2)
-num.sims <- 100
-for(i in 1:num.sims){
-  iasva.avg.cor.mat <- iasva.avg.cor.mat + abs(cor(cbind(kfactor,hfactors_iasva_list[[i]])))/num.sims
-  pca.avg.cor.mat <- pca.avg.cor.mat + abs(cor(cbind(kfactor,hfactors_pca_list[[i]])))/num.sims
-  usva.avg.cor.mat <- usva.avg.cor.mat + abs(cor(cbind(kfactor,hfactors_usva_list[[i]])))/num.sims
-  ssva.avg.cor.mat <- ssva.avg.cor.mat + abs(cor(cbind(kfactor,hfactors_ssva_list[[i]])))/num.sims
-}
-
-colnames(org.corr) <- c("KF","HF1","HF2","HF3")
-colnames(iasva.avg.cor.mat) <- c("KF","HF1","HF2","HF3")
-colnames(pca.avg.cor.mat) <- c("KF","HF1","HF2","HF3")
-colnames(usva.avg.cor.mat) <- c("KF","HF1","HF2","HF3")
-colnames(ssva.avg.cor.mat) <- c("KF","HF1","HF2","HF3")
-
-pdf(file="output/factor_correlations_comparison.pdf", width=8, height=8)
-par(mfrow=c(2,2))
-corrplot.mixed(org.corr, lower="ellipse", upper="number", title="Simulated factor correlations", mar=c(0,0,1,0))
-corrplot.mixed(iasva.avg.cor.mat, lower="ellipse", upper="number", title="Correlations inferred by IA-SVA", mar=c(0,0,1,0))
-corrplot.mixed(usva.avg.cor.mat, lower="ellipse", upper="number", title="Correlations inferred by USVA", mar=c(0,0,1,0))
-corrplot.mixed(ssva.avg.cor.mat, lower="ellipse", upper="number", title="Correlations inferred by SSVA", mar=c(0,0,1,0))
-dev.off()
-par(mfrow=c(1,1))
 ```
