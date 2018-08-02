@@ -21,7 +21,7 @@ devtools::install_github("UcarLab/IA-SVA")
 devtools::install_github("dleelab/iasvaExamples")
 ```
 
-#### Load packages
+## Load packages
 ```{r load_packages, echo=TRUE, message=FALSE}
 rm(list=ls())
 library(irlba) # partial SVD, the augmented implicitly restarted Lanczos bidiagonalization algorithm
@@ -36,7 +36,6 @@ library(reshape2)
 library(ggplot2)
 library(SummarizedExperiment)
 
-#setwd("/Users/ducar/Desktop/GitHub_Projects/iasvaVignettes/Lawlor_Islets/")
 color.vec <- brewer.pal(9, "Set1")
 
 iasva.tmp <- function(Y, X, intercept=TRUE, num.sv=NULL, permute=TRUE, num.p=100, sig.cutoff= 0.05, threads=1, num.sv.permtest=NULL, tol=1e-10, verbose=FALSE){
@@ -177,18 +176,18 @@ ContCoef(table(anns$Patient_ID, anns$Cell_Type))
 ContCoef(table(anns$Batch, anns$Cell_Type))
 ```
 
-#### Look at mean variance relationship
+## Look at mean variance relationship
 ```{r mean_var_relationship, eval=TRUE, include=TRUE, warning=FALSE, fig.width=8, fig.height=5}
 plot(rowMeans(log(counts+1)),rowVars(log(counts+1)),pch=19,col=color.vec[2])
 ```
 
-#### Estimate zero inflated negative binomial parameters from the islet data
+## Estimate zero inflated negative binomial parameters from the islet data
 ```{r param_estimation, eval=TRUE}
 ## Estimate the zero inflated negative binomial parameters
 params = get_params(counts)
 ```
 
-#### Generate a data set affected by two factors (known and unknown).
+## Generate a data set affected by two factors (known and unknown).
 Here we compare unsupervised SVA, supervised SVA and IA-SVA 
 ```{r simulate_data, eval=TRUE,  fig.width=8, fig.height=5}
 set.seed(1234) #5000
@@ -237,6 +236,8 @@ dim(dat0)
 dim(mod)
 ```
 
+## Estimate hidden factor using IA-SVA 
+We also plot effect sizes of known and hidden factor and estimated weights (R-squared)
 ```{r iasva_hidden_factor_estimation, eval=TRUE, fig.height=8, fig.width=8}
 ## Set null and alternative models
 mod1 = model.matrix(~kfactor)
@@ -265,6 +266,7 @@ par(mfrow=c(1,1))
 
 ```
 
+## R-squared (Weights) as a function of hidden and known factors' effect size 
 ```{r iasva_results_analysis, eval=TRUE, fig.height=8, fig.width=8}
 overlap.hfcoeffs1 <- hfcoeffs1[filter][filter2]
 overlap.kfcoeffs <- kfcoeffs[filter][filter2]
@@ -285,6 +287,7 @@ dev.off()
 par(mfrow=c(1,1))
 ```
 
+## Hidden factor estimation using existing methods
 ```{R alternative_hidden_factor_estimation, eval=TRUE}
 ## Estimate batch with pca
 ldat0 = log(dat0 + 1)
@@ -301,6 +304,7 @@ cor(hfactor1,hfactors_ssva)
 
 ```
 
+## Plot hidden factor estimates of IA-SVA and existing methods
 ```{r comp_figures, eval=TRUE, include=TRUE, warning=FALSE, fig.width=8, fig.height=12}
 ## Plot the results
 par(mfrow=c(5,1))
@@ -313,7 +317,7 @@ par(mfrow=c(1,1))
 ```
 <br>
 
-
+## Multiple simulations where hidden and known factors affect overlapping sets of genes
 ```{r multiple_prop_sim, eval=TRUE, include=TRUE, warning=FALSE}
 
 set.seed(4000)
@@ -361,8 +365,8 @@ for(i in 1:length(overlap.prop.vec)){
   sum(dat0==0)/length(dat0)
   controls.list[[i]] <- controls[filter]
 
-  dim(dat0)
-  dim(mod)
+  #dim(dat0)
+  #dim(mod)
   data.list[[i]] <- dat0
   par(mfrow=c(2,1))
   print(plot(kfcoeffs))
@@ -373,6 +377,7 @@ dev.off()
 
 ```
 
+## Estimation of hidden factors using IA-SVA and existing methods
 ```{r multiple_prop_sim_factor_estimation, eval=TRUE, include=TRUE, warning=FALSE}
 
 ## Set null and alternative models
@@ -398,6 +403,7 @@ for(i in 1:length(overlap.prop.vec)){
 }
 ```
 
+## Compare the accuracy
 ```{r assess_estimation_accuracy, eval=TRUE, fig.width=8, fig.height=5}
 
 iasva.cor.vec <- as.vector(abs(cor(hfactor1, do.call(cbind, hfactors_iasva_list))))
