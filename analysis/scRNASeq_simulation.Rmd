@@ -148,7 +148,7 @@ cor(hfactor3, ssva.res[,3])
 
 ## Estimate hidden factors with IA-SVA
 summ_exp <- SummarizedExperiment(assays = dat0)
-iasva.res <- iasva(summ_exp, mod1[,-1], num.p = 20)$sv # the default number of permutations in SVA = 20
+iasva.res <- iasva(summ_exp, as.matrix(mod1[,-1]), num.p = 20)$sv # the default number of permutations in SVA = 20
 cor(hfactor1, iasva.res[,1])
 cor(hfactor2, iasva.res[,2])
 cor(hfactor3, iasva.res[,3])
