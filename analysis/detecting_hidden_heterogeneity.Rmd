@@ -79,7 +79,7 @@ are stored in "anns" and the read counts information is stored in "counts".
 To illustrate how IA-SVA can be used to detect hidden heterogeneity within
 a homogenous cell population (i.e., alpha cells), we use read counts of 
 alpha cells from healthy (non-diabetic) subjects (n = 101).   
-```{r alpha_cells, echo=TRUE, results='asis', fig.width=8, fig.height=6}
+```{r alpha_cells, echo=TRUE, results='asis'}
 # Selected T2D patients/GCG cell type
 counts <- counts[, (anns$Phenotype!="Non-Diabetic")&(anns$Cell_Type=="GCG")]
 anns <- subset(anns, (Phenotype!="Non-Diabetic")&(Cell_Type=="GCG"))
@@ -97,20 +97,20 @@ prop.zeros
 
 ```
 
-```{r normalization}
 ## Normalization using SCnorm
+```{r normalization, fig.width=8, fig.height=6}
 ## count-depth relationship for all genes
 Conditions = rep(c(1), each=101)
 countDeptEst <- plotCountDepth(Data = counts, Conditions = Conditions,
-                               FilterCellProportion = .1, NCores=3)
+                               FilterCellProportion = .1, NCores=8)
 
 DataNorm <- SCnorm(Data = counts, Conditions = Conditions,
                    PrintProgressPlots = FALSE,
                    FilterCellNum = 10,
-                   NCores=3)
+                   NCores=8)
 
 counts <- results(DataNorm)
-summary(colSums(counts))
+#summary(colSums(counts))
 ```
 
 ## Calculate the number of detected genes 
@@ -178,8 +178,9 @@ default significance cutoff, and R-squared value > 0.3, default R-squared cutoff
 ```{r find_markers, echo=TRUE, fig.width=7, fig.height=5}
 # try different R2 thresholds
 pdf("output/Clustering_analyses_figure2.pdf")
-r2.results <- study_R2(summ_exp, iasva.sv,selected.svs=2, no.clusters=2)
+r2.results <- study_R2(summ_exp, iasva.sv, selected.svs=2, no.clusters=2) 
 dev.off()
+
 marker.counts <- find_markers(summ_exp, as.matrix(iasva.sv[,2]), rsq.cutoff = 0.6)
 marker.counts.long <- find_markers(summ_exp, as.matrix(iasva.sv[,2]), rsq.cutoff = 0.3)
 nrow(marker.counts)
