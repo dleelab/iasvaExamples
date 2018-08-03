@@ -374,7 +374,7 @@ for (i in seq(0.1,0.9,0.05)){
 output.matrix <- rbind(C.scores, Number.of.genes)
 
 
-pdf("Clustering_analyses_figure4_Xin.pdf")
+pdf("output/Clustering_analyses_figure4_Xin.pdf")
 par(mar=c(5,5,5,5))
 end.point <- (length(C.scores)-1)*0.05+0.1
 plot(Number.of.genes,  xlab = "R^2", ylab = "Number genes selected", xaxt="n", main = "Number of selected genes vs. Cluster quality", pch = 18, col ="blue",type="b", lty=2, cex=2)
@@ -390,7 +390,7 @@ dev.off()
 ## Find marker genes for SV1.
 ```{r find_markers_SV1, echo=TRUE, fig.width=7, fig.height=10}
 # try different R2 thresholds
-pdf("Clustering_analyses_figure4_Xin_sv1.pdf")
+pdf("output/Clustering_analyses_figure4_Xin_sv1.pdf")
 r2.results <- study_R2(summ_exp, iasva.sv,selected.svs=1, no.clusters=2)
 dev.off()
 marker.counts <- find_markers(summ_exp, as.matrix(iasva.sv[,c(1)]),  rsq.cutoff = 0.3)
