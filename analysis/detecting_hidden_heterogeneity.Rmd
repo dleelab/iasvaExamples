@@ -109,8 +109,8 @@ DataNorm <- SCnorm(Data = counts, Conditions = Conditions,
                    FilterCellNum = 10,
                    NCores=8)
 
-counts <- results(DataNorm)
-#summary(colSums(counts))
+counts <- SingleCellExperiment::normcounts(DataNorm)
+summary(colSums(counts))
 ```
 
 ## Calculate the number of detected genes 
