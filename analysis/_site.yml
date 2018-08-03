@@ -1,4 +1,4 @@
-name: "iasvaExamples"
+name: "IA-SVA Examples"
 output_dir: "../docs"
 include: [".nojekyll"]
 exclude: ["include"]
@@ -7,16 +7,13 @@ navbar:
   left:
     - text: "Home"
       href: index.html
-    - text: "About"
-      href: about.html
     - text: "License"
       href: license.html
-  right:
-    - icon: fa-github
-      href: https://github.com/jdblischak/workflowr
+    - text: "GitHub"
+      href: https://github.com/dleelab/iasvaExamples
 output:
   workflowr::wflow_html:
     toc: true
-    toc_float: true
+    toc_float: false
     theme: cosmo
     highlight: textmate
