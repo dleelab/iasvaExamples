@@ -1,0 +1,368 @@
+---
+title: "Detecting cell-cycle stage difference in glioblastoma cells"
+author: "Donghyung Lee"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{"Detecting cell-cycle stage difference in glioblastoma cells"}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+Here, we illustrate how to use the iasva package to detect cell cycle stage
+difference within single cell RNA sequencing data. We use single cell RNA
+sequencing (scRNA-Seq) data obtained from human glioblastoma samples
+([Petel et. al., 2014](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4123637/)).
+This dataset is included in a R data package ("iasvaExamples") containing data
+examples for IA-SVA (https://github.com/dleelab/iasvaExamples). 
+To install the package, follow the instruction provided in the GitHub page.
+
+## Install packages
+```{r install_packages, echo=TRUE, eval=FALSE}
+#devtools
+library(devtools)
+#iasva
+devtools::install_github("UcarLab/iasva")
+#iasvaExamples  
+devtools::install_github("dleelab/iasvaExamples")
+```
+
+## Load packages
+```{r load_packages, echo=TRUE, message=FALSE}
+rm(list=ls())
+library(irlba) # partial SVD, the augmented implicitly restarted Lanczos bidiagonalization algorithm
+library(iasva)
+library(iasvaExamples)
+library(sva)
+library(SCnorm)
+library(scran)
+library(scater)
+library(Rtsne)
+library(pheatmap)
+library(corrplot)
+library(DescTools) #pcc i.e., Pearson's contingency coefficient
+library(RColorBrewer)
+library(SummarizedExperiment)
+library(vioplot)
+color.vec <- brewer.pal(3, "Set1")
+
+# Normalization.
+normalize <- function(counts) 
+{
+    normfactor <- colSums(counts)
+    return(t(t(counts)/normfactor)*median(normfactor))
+}
+```
+
+## Load the glioblastoma single cell RNA-Seq data
+```{r load_data, echo=TRUE}
+data("Patel_Glioblastoma_scRNAseq_Read_Counts")
+data("Patel_Glioblastoma_scRNAseq_Annotations")
+data("Patel_Glioblastoma_scRNAseq_ENSG_ID")
+ls()
+counts <- Patel_Glioblastoma_scRNAseq_Read_Counts
+anns <- Patel_Glioblastoma_scRNAseq_Annotations
+ENSG.ID <- Patel_Glioblastoma_scRNAseq_ENSG_ID
+dim(anns)
+dim(counts)
+length(ENSG.ID)
+
+summary(anns)
+table(anns$patient_id, anns$subtype)
+ContCoef(table(anns$patient_id, anns$subtype))
+```
+
+The annotations describing the glioblastoma samples and experimental
+settings are stored in "anns" and the read counts information
+is stored in "counts".
+
+## Extract glioblastoma cells from Patient MGH30 
+We use read counts of glioblastoma cells from Patient MGH30 (n = 74).   
+```{r MGH30_cells, echo=TRUE, results='asis'}
+counts <- counts[, (anns$patient_id=="MGH30")] 
+anns <- subset(anns, (patient_id=="MGH30"))
+dim(counts)
+dim(anns)
+anns <- droplevels(anns)
+prop.zeros <- sum(counts==0)/length(counts)
+prop.zeros
+# filter out genes that are sparsely and lowly expressed
+filter = apply(counts, 1, function(x) length(x[x>5])>=3)
+counts = counts[filter,]
+dim(counts)
+ENSG.ID <- ENSG.ID[filter]
+length(ENSG.ID)
+prop.zeros <- sum(counts==0)/length(counts)
+prop.zeros
+Subtype <- anns$subtype
+Patient_ID <- anns$patient_id
+mito.genes <- grep(pattern = "^MT-", x = rownames(x = counts), value = TRUE)
+Percent_Mito <- colSums(counts[mito.genes, ])/colSums(counts)
+```
+
+```{r normalization, fig.width=8, fig.height=6}
+## Normalization using SCnorm
+## count-depth relationship for all genes
+Conditions = rep(c(1), each=74)
+countDeptEst <- plotCountDepth(Data = counts, Conditions = Conditions,
+                               FilterCellProportion = .1, NCores=3)
+
+DataNorm <- SCnorm(Data = counts, Conditions = Conditions,
+                   PrintProgressPlots = FALSE,
+                   FilterCellNum = 10,
+                   NCores=3)
+counts <- SingleCellExperiment::normcounts(DataNorm)
+summary(colSums(counts))
+dim(counts)
+```
+
+
+## Calculate the number of detected genes 
+It is well known that the number of detected genes in each cell explains
+a very large portion of variability in scRNA-Seq data 
+([Hicks et. al. 2015 BioRxiv](http://biorxiv.org/content/early/2015/08/25/025528),
+[McDavid et. al. 2016 Nature Biotechnology](http://www.nature.com/nbt/journal/v34/n6/full/nbt.3498.html)).
+Frequently, the first principal component of log-transformed scRNA-Seq read counts is highly correlated
+with the number of detected genes (e.g., r > 0.9). Here, we calculate the number of detected genes 
+for glioblastoma cells, which will be used as an known factor in the IA-SVA analyses. 
+```{r num_detected_genes, echo=TRUE, fig.width=7, fig.height=4}
+Num_Detected_Genes <- colSums(counts>0)
+Geo_Lib <- colSums(log(counts+1))
+summary(Geo_Lib)
+barplot(Geo_Lib, xlab="Cell", las=2, ylab = "Geometric library size")
+lcounts <- log(counts + 1)
+# PC1 and Geometric library size correlation
+pc1 = irlba(lcounts - rowMeans(lcounts), 1)$v[,1] ## partial SVD
+cor(Num_Detected_Genes, pc1)
+cor(Geo_Lib, pc1)
+```
+
+## Run IA-SVA
+Here, we run IA-SVA using Geo_Lib_Size as a known factor and identify five hidden factors. 
+SVs are plotted in a pairwise fashion to uncover which SVs can seperate cells. 
+```{r run_iasva, echo=TRUE, fig.width= 7, fig.height=6}
+set.seed(3445)
+mod <- model.matrix(~Geo_Lib)
+summ_exp <- SummarizedExperiment(assays = counts)
+iasva.res<- iasva(summ_exp, mod[,-1],verbose=FALSE, permute=FALSE, num.sv=5)
+iasva.sv <- iasva.res$sv
+
+Cluster <- as.factor(iasva.sv[,1] < 0.1) 
+levels(Cluster)=c("Cluster1","Cluster2")
+table(Cluster)
+
+pairs(iasva.sv[,1:5], main="IA-SVA", pch=21, col=color.vec[Cluster],
+      bg=color.vec[Cluster], oma=c(4,4,6,14))
+legend("right", levels(Cluster), fill=color.vec, bty="n")
+
+plot(iasva.sv[,1:2], main="IA-SVA", pch=21, xlab="SV1", ylab="SV2",
+     col=color.vec[Cluster], bg=color.vec[Cluster])
+
+cor(Num_Detected_Genes, iasva.sv[,1])
+cor(Geo_Lib, iasva.sv[,1])
+corrplot(cor(iasva.sv))
+```
+
+## Find marker genes for the detected heterogeneity (SV1).
+Here, using the find_markers() function we find marker genes that are significantly
+associated with SV1 (multiple testing adjusted p-value < 0.05, 
+default significance cutoff, and R-squared value > 0.3).  
+```{r find_markers_SV1, echo=TRUE, fig.width=6, fig.height=16}
+# try different R2 thresholds
+pdf(paste0("output/Clustering_analyses_figure3_sv1.pdf"))
+r2.results <- study_R2(summ_exp, iasva.sv,selected.svs=1, no.clusters=2)
+dev.off()
+
+marker.counts.SV1 <- find_markers(summ_exp, 
+                            as.matrix(iasva.sv[,c(1)]), rsq.cutoff = 0.4)
+marker.counts.SV1.long <- find_markers(summ_exp, 
+                              as.matrix(iasva.sv[,c(1)]), rsq.cutoff = 0.3)
+nrow(marker.counts.SV1) 
+nrow(marker.counts.SV1.long)
+
+anno.col2 <- data.frame(Cluster=Cluster, SV1=iasva.sv[,1])
+rownames(anno.col2) <- colnames(marker.counts.SV1)
+head(anno.col2)
+
+cluster.col <- color.vec[1:2]
+names(cluster.col) <- as.vector(levels(Cluster))
+anno.colors <- list(Cluster=cluster.col)
+anno.colors
+
+pheatmap(log(marker.counts.SV1+1), show_colnames =FALSE, 
+         clustering_method = "ward.D2",cutree_cols = 2,annotation_col = anno.col2,
+         annotation_colors = anno.colors)
+
+pheatmap(log(marker.counts.SV1.long+1), show_colnames =FALSE, 
+         clustering_method = "ward.D2",cutree_cols = 2,annotation_col = anno.col2,
+         annotation_colors = anno.colors)
+
+gene.list <- rownames(marker.counts.SV1)
+write.table(gene.list, file = paste0("output/CC_genes.short.txt"),
+            col.names =F, row.names = F, quote = F)
+
+gene.list <- rownames(marker.counts.SV1.long)
+write.table(gene.list, file = paste0("output/CC_genes.long.txt"),
+            col.names =F, row.names = F, quote = F)
+
+```
+Theses marker genes are strongly enriched in cell-cycle related GO terms
+and KEGG pathways. (See Supplementary Figure 6 in
+https://doi.org/10.1101/151217)
+
+## Cell type assignment using scran R package
+```{r run_scran, echo=TRUE, fig.width=6, fig.height=4}
+ENSG.counts <- counts
+rownames(ENSG.counts) <- ENSG.ID
+sce <- SingleCellExperiment(list(counts=ENSG.counts))
+
+# load human cell cycle markers
+hs.pairs <- readRDS(system.file("exdata", 
+                                "human_cycle_markers.rds", package="scran"))
+assigned <- cyclone(sce, pairs=hs.pairs)
+head(assigned$scores)
+table(assigned$phases)
+phase <- rep("S", ncol(sce))
+phase[assigned$scores$G1 > 0.5 & assigned$scores$G2M < 0.5] <- "G1"
+phase[assigned$scores$G1 < 0.5 & assigned$scores$G2M > 0.5] <- "G2M"
+phase[assigned$scores$G1 < 0.5 & assigned$scores$G2M < 0.5] <- "S"
+phase[assigned$scores$G1 > 0.5 & assigned$scores$G2M > 0.5] <- "Unknown"
+table(phase)
+
+G1 <- iasva.sv[,1][phase=="G1"]
+S <- iasva.sv[,1][phase=="S"]
+G2M <- iasva.sv[,1][phase=="G2M"]
+Unknown <- iasva.sv[,1][phase=="Unknown"]
+vioplot(G1, S, G2M, Unknown, names=c("G1", "S", "G2M", "Unknown"), 
+   col="gold")
+title(xlab="Cell-cycle stage predictions", ylab="IA-SVA factor (SV1)")
+```
+## Run tSNE to detect the hidden heterogeneity.
+For comparison purposes, we applied tSNE on read counts of all genes to
+identify the hidden heterogeneity. We used the Rtsne R package
+with default settings.
+
+```{r run_tsne, echo=TRUE, fig.width=7, fig.height=7}
+set.seed(43324)
+tsne.res <- Rtsne(t(lcounts), dims = 2, perplexity = 20)
+plot(tsne.res$Y, main="tSNE", xlab="Dim1", ylab="Dim2", 
+     pch=21, col=color.vec[Cluster], bg=color.vec[Cluster], oma=c(4,4,6,12))
+legend("bottomright", levels(Cluster), border="white",
+       fill=color.vec, bty="n")
+```
+
+
+As shown above, tSNE fails to detect the outlier cells that are identified
+by IA-SVA when all genes are used. Same color coding is used as above. 
+
+## Run tSNE post IA-SVA analyses, i.e., run tSNE on marker genes associated with SV1 as detected by IA-SVA.
+Here, we apply tSNE on the marker genes for SV1 obtained from IA-SVA
+```{r run_tsne_post_iasva, echo=TRUE, fig.width=7, fig.height=7}
+set.seed(3452)
+tsne.res <- Rtsne(unique(t(log(marker.counts.SV1.long+1))),
+                  dims = 2, perplexity = 20)
+
+plot(tsne.res$Y, main="IA-SVA + tSNE", xlab="tSNE Dim1",
+     ylab="tSNE Dim2", pch=21, col=color.vec[Cluster],
+     bg=color.vec[Cluster], oma=c(4,4,6,12))
+legend("topright", levels(Cluster), border="white", fill=color.vec, bty="n")
+
+```
+
+## Run principal component analysis (PCA) to detect the hidden heterogeneity (SV1).
+Here, we use PCA to detect the cell cycle stage difference (SV1) detected by IA-SVA.
+```{r pca_plot, echo=TRUE, fig.width=7, fig.height=7}
+set.seed(3333)
+pca.res = irlba(lcounts - rowMeans(lcounts), 5)$v ## partial SVD
+
+pairs(pca.res[,1:5], main="PCA", pch=21, col=color.vec[Cluster],
+      bg=color.vec[Cluster],
+      oma=c(4,4,6,14))
+legend("right", levels(Cluster), fill=color.vec, bty="n")
+
+plot(pca.res[,1:2], main="PCA", pch=21, xlab="PC1", ylab="PC2",
+     col=color.vec[Cluster], bg=color.vec[Cluster])
+legend("bottomleft", levels(Cluster), border="white", fill=color.vec, bty="n")
+
+```
+PCA failed to capture the heterogeneity.
+
+## Run surrogate variable analysis (SVA) to detect the hidden heterogeneity (SV1).
+Here, for comparison purposes we use SVA to detect the hidden heterogeneity in our example data. 
+```{r run_sva, echo=TRUE, fig.width=7, fig.height=7}
+mod1 <- model.matrix(~Geo_Lib)
+mod0 <- cbind(mod1[,1])
+sva.res = svaseq(counts,mod1,mod0, n.sv=5)$sv
+pairs(sva.res[,1:5], main="SVA", pch=21, col=color.vec[Cluster],
+      bg=color.vec[Cluster], oma=c(4,4,6,14))
+legend("right", levels(Cluster), border="white", fill=color.vec, bty="n")
+plot(sva.res[,1:2], main="SVA", xlab="SV1", ylab="SV2",
+     pch=21, col=color.vec[Cluster], bg=color.vec[Cluster])
+legend("topleft", levels(Cluster), border="white", fill=color.vec, bty="n")
+
+```
+SVA failed to detect the cell cycle stage difference.
+
+## Correlation between SV1 and the geometric library size
+```{r SV1_geometric_lib_size, echo=TRUE}
+cor(Num_Detected_Genes, iasva.sv[,1])
+cor(Geo_Lib, iasva.sv[,1])
+```
+By allowing correlation between factors, IA-SVA accurately detects the cell
+cycle stage difference, which is moderately correlated (|r|=0.44) with the geometric
+library size (the first principal component). Existing methods fail to detect
+the heterogeneity due to the orthogonality assumption.
+
+```{r  gen_Figure3ABCDE, fig.width=5, fig.height=8}
+pdf(file=paste0("output/Patel_Glioblastoma_MGH30_CellCycle_Figure3ABCD.pdf"), width=5, height=8)
+layout(matrix(c(1,2,3,4,5,5), nrow=3, ncol=2, byrow=TRUE))
+plot(iasva.sv[,1:2], main="IA-SVA", pch=21, xlab="SV1", ylab="SV2",
+     col=color.vec[Cluster], bg=color.vec[Cluster], oma=c(4,4,6,12))
+legend("topright", levels(Cluster), border="white", fill=color.vec, bty="n")
+plot(pca.res[,1:2], main="PCA", pch=21, xlab="PC1", 
+     ylab="PC2", col=color.vec[Cluster], bg=color.vec[Cluster])
+plot(sva.res[,1:2], main="USVA", xlab="SV1", ylab="SV2",
+     pch=21, col=color.vec[Cluster], bg=color.vec[Cluster])
+plot(tsne.res$Y, main="tSNE", xlab="Dimension 1", 
+     ylab="Dimension 2", pch=21, col=color.vec[Cluster], bg=color.vec[Cluster])
+vioplot(G1, S, G2M, Unknown, names=c("G1", "S", "G2M", "Unknown"), 
+   col="gold")
+title(xlab="Cell-cycle stage predictions", ylab="IA-SVA factor")
+dev.off()
+```
+
+```{r gen_Figure3F, fig.width=6, fig.height=16}
+anno.col2 <- data.frame(Cluster=Cluster)
+rownames(anno.col2) <- colnames(marker.counts.SV1)
+head(anno.col2)
+
+cluster.col <- color.vec[1:2]
+names(cluster.col) <- as.vector(levels(Cluster))
+anno.colors <- list(Cluster=cluster.col)
+anno.colors
+
+pheatmap(log(marker.counts.SV1.long+1), show_colnames =FALSE, 
+         clustering_method = "ward.D2",cutree_cols = 2,annotation_col = anno.col2,
+         annotation_colors = anno.colors)
+pheatmap(log(marker.counts.SV1.long+1), show_colnames =FALSE,
+         clustering_method = "ward.D2",cutree_cols = 2,annotation_col = anno.col2,
+         annotation_colors = anno.colors,
+         filename=paste0("output/Patel_Glioblastoma_MGH30_iasva_SV1_genes_rsqcutoff0.3_pheatmap_iasvaV0.95_Figure3F.pdf"),
+         width=6, height=16)
+
+```
+
+
+```{r gen_SV1_gene_list}
+write.table(as.data.frame(rownames(marker.counts.SV1)), 
+            file=paste0("output/Patel_Glioblastoma_MGH30_Cellcycle_SV1_Genes_rsqcutoff0.4.txt"),
+            quote=F, row.names=F, col.names=F, sep=" ")
+
+write.table(as.data.frame(rownames(marker.counts.SV1.long)), 
+            file=paste0("output/Patel_Glioblastoma_MGH30_Cellcycle_SV1_Genes_rsqcutoff0.3.txt"), 
+            quote=F, row.names=F, col.names=F, sep=" ")
+```
+
