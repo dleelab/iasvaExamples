@@ -103,17 +103,17 @@ mito.genes <- grep(pattern = "^MT-", x = rownames(x = counts), value = TRUE)
 Percent_Mito <- colSums(counts[mito.genes, ])/colSums(counts)
 ```
 
-```{r normalization, fig.width=8, fig.height=6}
 ## Normalization using SCnorm
+```{r normalization, fig.width=8, fig.height=6}
 ## count-depth relationship for all genes
 Conditions = rep(c(1), each=74)
 countDeptEst <- plotCountDepth(Data = counts, Conditions = Conditions,
-                               FilterCellProportion = .1, NCores=3)
+                               FilterCellProportion = .1, NCores=8)
 
 DataNorm <- SCnorm(Data = counts, Conditions = Conditions,
                    PrintProgressPlots = FALSE,
                    FilterCellNum = 10,
-                   NCores=3)
+                   NCores=8)
 counts <- SingleCellExperiment::normcounts(DataNorm)
 summary(colSums(counts))
 dim(counts)
@@ -147,7 +147,7 @@ SVs are plotted in a pairwise fashion to uncover which SVs can seperate cells.
 set.seed(3445)
 mod <- model.matrix(~Geo_Lib)
 summ_exp <- SummarizedExperiment(assays = counts)
-iasva.res<- iasva(summ_exp, mod[,-1],verbose=FALSE, permute=FALSE, num.sv=5)
+iasva.res<- iasva(summ_exp, as.matrix(mod[,-1]),verbose=FALSE, permute=FALSE, num.sv=5)
 iasva.sv <- iasva.res$sv
 
 Cluster <- as.factor(iasva.sv[,1] < 0.1) 
