@@ -19,5 +19,5 @@ output:
 * [Example 7) scRNA-seq Data Simulation (2)](sim_study_KF_HF_genes_overlap.html)
 
 ## Reviewer #2 Simulations
-* [Reviewer #2's Simulation](reviewer2_sim.html)
-* [Suggested Simulation](reviewer2_sim_suggested.html)
+* [Reviewer #2's Simulations](reviewer2_sim.html)
+* [Suggested Simulations](reviewer2_sim_suggested.html)
