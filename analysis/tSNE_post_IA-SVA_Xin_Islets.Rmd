@@ -1,0 +1,524 @@
+---
+title: "IA-SVA based feature selection improves the performance of clustering algorithms [2]"
+author: "Donghyung Lee"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{"IA-SVA based feature selection improves the performance of clustering algorithms [2]"}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+Here, we used single cell RNA sequencing (scRNA-Seq) data with strong
+confounding variables, which is also obtained from human pancreatic
+islet samples ([Xin et. al., 2016](http://www.cell.com/cell-metabolism/abstract/S1550-4131(16)30434-X)).
+This dataset is included in an R data package ("iasvaExamples") containing
+data examples for IA-SVA (https://github.com/dleelab/iasvaExamples). 
+To install the 'iasvaExamples' package, follow the instructions
+provided in the GitHub page.
+
+## Load packages
+```{r load_packages, echo=TRUE}
+rm(list=ls())
+library(sva)
+library(Seurat)
+library(iasva)
+library(iasvaExamples)
+library(dbscan)
+library(irlba)
+library(Rtsne)
+library(pheatmap)
+library(corrplot)
+library(DescTools) #pcc i.e., Pearson's contingency coefficient
+library(RColorBrewer)
+library(cluster)
+library(SummarizedExperiment)
+color.vec <- brewer.pal(8, "Set1")
+tol21rainbow= c("#771155", "#AA4488", "#CC99BB", "#114477", "#4477AA",
+                "#77AADD", "#117777", "#44AAAA", "#77CCCC", "#117744",
+                "#44AA77", "#88CCAA", "#777711", "#AAAA44", "#DDDD77",
+                "#774411", "#AA7744", "#DDAA77", "#771122", "#AA4455",
+                "#DD7788")
+
+# Normalization.
+normalize <- function(counts) 
+{
+    normfactor <- colSums(counts)
+    return(t(t(counts)/normfactor)*median(normfactor))
+}
+```
+
+## Load the islet scRNA-Seq data
+```{r load_data, echo=TRUE, fig.width=6, fig.height=4}
+data("Xin_Islet_scRNAseq_Read_Counts")
+data("Xin_Islet_scRNAseq_Annotations")
+ls()
+counts <- Xin_Islet_scRNAseq_Read_Counts
+anns <- Xin_Islet_scRNAseq_Annotations
+dim(anns)
+dim(counts)
+Lib_Size <- colSums(counts)
+plot(sort(Lib_Size))
+hist(Lib_Size)
+summary(Lib_Size)
+```
+The annotations describing the islet samples and experimental settings are 
+stored in "anns" and the read counts information is stored in "counts". 
+
+## Filter out low-expressed genes 
+```{r alpha_cells, echo=TRUE, results='asis'}
+dim(counts)
+dim(anns)
+anns <- droplevels(anns)
+prop.zeros <- sum(counts==0)/length(counts)
+prop.zeros
+filter = apply(counts, 1, function(x) length(x[x>5])>=3)
+counts = counts[filter,]
+dim(counts)
+prop.zeros <- sum(counts==0)/length(counts)
+prop.zeros
+summary(anns)
+Patient_ID <- anns$Donor_ID
+Gender <- anns$Gender
+Age <- anns$Age
+Cell_Type <- anns$Cell_Type
+Phenotype <- anns$Condition
+Ethnicity <- anns$Ethnicity
+Mito_Frac <- anns$Mitochondrial_Fraction
+table(Cell_Type, Patient_ID)
+ContCoef(table(Cell_Type, Patient_ID))
+table(Cell_Type, Gender)
+ContCoef(table(Cell_Type, Gender))
+table(Cell_Type, Age)
+ContCoef(table(Cell_Type, Age))
+table(Cell_Type, Phenotype)
+ContCoef(table(Cell_Type, Phenotype))
+table(Cell_Type, Ethnicity)
+ContCoef(table(Cell_Type, Ethnicity))
+ContCoef(table(Patient_ID, Gender))
+ContCoef(table(Patient_ID, Age))
+ContCoef(table(Patient_ID, Phenotype))
+ContCoef(table(Patient_ID, Ethnicity))
+ContCoef(table(Gender, Age))
+ContCoef(table(Gender, Phenotype))
+ContCoef(table(Gender, Ethnicity))
+ContCoef(table(Age, Phenotype))
+ContCoef(table(Age, Ethnicity))
+ContCoef(table(Phenotype, Ethnicity))
+raw.counts <- counts
+summary(colSums(counts))
+counts <- normalize(counts)
+summary(colSums(counts))
+
+```
+
+Note that the orignial cell assignments are highly correlated with known factors.
+
+## Calculate the number of detected genes 
+It is well known that the number of detected genes in each cell explains a very
+large portion of variability in scRNA-Seq data 
+([Hicks et. al. 2015 BioRxiv](http://biorxiv.org/content/early/2015/08/25/025528),
+[McDavid et. al. 2016 Nature Biotechnology](http://www.nature.com/nbt/journal/v34/n6/full/nbt.3498.html)).
+Frequently, the first principal component of log-transformed scRNA-Seq read
+counts is highly correlated with the number of detected genes (e.g., r > 0.9).
+Here, we calculate the number of detected genes for islet cells, which will be
+used as an known factor in the IA-SVA analyses. 
+```{r num_detected_genes, echo=TRUE, fig.width=6, fig.height=4}
+Num_Detected_Genes <- colSums(counts>0)
+summary(Num_Detected_Genes)
+barplot(Num_Detected_Genes, xlab="Cell", las=2, ylab = "Number of detected genes")
+lcounts <- log(counts + 1)
+# PCA
+pca.res = irlba(lcounts - rowMeans(lcounts), 5)$v
+cor(Num_Detected_Genes, pca.res[,1])
+dim(lcounts)
+
+```
+
+
+## Run tSNE to cluster islet cells.
+For comparison purposes,we applied tSNE on read counts of all genes. 
+We used the Rtsne R package with default settings.
+Genes are color coded wrt their expression of marker genes. 
+```{r run_tsne, echo=TRUE, fig.width=7, fig.height=7}
+set.seed(34544532)
+tsne.res.all <- Rtsne(t(lcounts), dims = 2)
+plot(tsne.res.all$Y, main="tSNE", xlab="tSNE Dim1", 
+     ylab="tSNE Dim2",pch=21, col=color.vec[Cell_Type], 
+     bg=color.vec[Cell_Type], oma=c(4,4,6,12))
+legend("topright", levels(Cell_Type), border="white", fill=color.vec, bty="n")
+
+par(mfrow=c(2,2))
+plot(tsne.res.all$Y, main="Gender", xlab="Dimension 1", 
+     ylab="Dimension 2", pch=21, col=color.vec[Gender], 
+     bg=color.vec[Gender], oma=c(4,4,6,12))
+legend("topleft", levels(Gender), border="white", 
+       fill=color.vec, bty="n")
+plot(tsne.res.all$Y, main="Patient ID", xlab="Dimension 1",
+     ylab="Dimension 2", pch=21, col=tol21rainbow[Patient_ID],
+     bg=tol21rainbow[Patient_ID], oma=c(4,4,6,12))
+legend("topleft", levels(Patient_ID), border="white", 
+       fill=tol21rainbow, bty="n", cex=0.5)
+plot(tsne.res.all$Y, main="Ethnicity", xlab="Dimension 1",
+     ylab="Dimension 2", pch=21, col=color.vec[Ethnicity],
+     bg=color.vec[Ethnicity], oma=c(4,4,6,12))
+legend("topleft", levels(Ethnicity), border="white",
+       fill=color.vec, bty="n")
+plot(tsne.res.all$Y, main="Phenotype", xlab="Dimension 1",
+     ylab="Dimension 2", pch=21, col=color.vec[Phenotype], 
+     bg=color.vec[Phenotype], oma=c(4,4,6,12))
+legend("topleft", levels(Phenotype), border="white", fill=color.vec, bty="n")
+par(mfrow=c(1,1))
+
+```
+Known factors deteriorate the performance of t-SNE.
+
+## Run CellView to cluster islet cells
+```{r run_CellView, echo=TRUE, fig.width=7, fig.height=7}
+# specify gene number to select for
+gene_num <- 1000
+
+# calcuclate dispersion
+row.var <- apply(lcounts,1,sd)**2
+row.mean <- apply(lcounts,1,mean)
+dispersion <- row.var/row.mean
+
+# generate sequence of bins
+bins <- seq(from = min(row.mean), to = max(row.mean), length.out = 20)
+
+# sort mean expression data into the bins
+bin.exp <- row.mean
+# sort the values
+bin.sort <- sort(bin.exp, decreasing = FALSE)
+# vector of bin assignment
+cuts <- cut(x = bin.exp, breaks = bins, labels = FALSE)
+# find which are NA and change to zero
+na.ids <- which(is.na(cuts) == TRUE)
+cuts[na.ids] <- 0
+
+# create an empty vector for overdispersion
+overdispersion <- NULL
+
+# for each gene and bin index, calculate median, mad, and then normalized dispersion
+# first loop through length of bins found
+for (k in 1:length(names(table(cuts)))) {
+  # find index of bins
+  bin.id <- which(cuts == names(table(cuts))[k])
+  # median of all genes in the bin
+  median.bin <- median(dispersion[bin.id], na.rm = TRUE)
+  # calculate mad (median absolute deviation)
+  mad.bin <- mad(dispersion[bin.id])
+  # calculate norm dispersion for each gene
+  for (m in 1:length(bin.id)) {
+    norm.dispersion <- abs(dispersion[bin.id[m]] - median.bin)/mad.bin
+    overdispersion <- c(overdispersion, norm.dispersion) 
+  }
+}
+
+# remove nans 
+overdis.na <- which(is.na(overdispersion) == TRUE)
+if (length(overdis.na) > 0) {
+  overdis.filt <- overdispersion[-overdis.na]
+} else {
+  overdis.filt <- overdispersion
+}
+
+
+# plot mean expression vs overdisperssion
+ids <- which(names(overdis.filt) %in% names(row.mean))
+plot(row.mean[ids], overdis.filt)
+
+# Do t-sne using top over-dispersed genes (apply mean expression filter too)
+rank.ov <- order(overdis.filt, decreasing = TRUE)
+ov.genes <- names(overdis.filt[rank.ov[1:gene_num]])
+log.sel <- lcounts[ov.genes,]
+
+all1 <- t(log.sel)
+# Remove groups that are all zeros
+df <- all1[,apply(all1, 2, var, na.rm=TRUE) != 0]
+
+set.seed(45344)
+rtsne_out <- Rtsne(as.matrix(df), dims = 3)
+
+# Set rownames of matrix to tsne matrix
+rownames(rtsne_out$Y) <- rownames(df)
+
+plot(rtsne_out$Y[,c(1,2)], main="CellView", xlab="Dimension 1", 
+     ylab="Dimension 2",pch=21, col=color.vec[Cell_Type], 
+     bg=color.vec[Cell_Type], oma=c(4,4,6,12))
+legend("topright", levels(Cell_Type), border="white", fill=color.vec, bty="n")
+```
+## Run Seurat to cluster islet cells
+```{r run_Seurat, echo=TRUE, fig.width=7, fig.height=7}
+set.seed(12344)
+seurat.obj <- CreateSeuratObject(raw.data=counts, 
+                                 min.cells=3, min.genes=200, project="Seurat_Comp")
+
+names(Patient_ID) <- rownames(seurat.obj@meta.data)
+seurat.obj <- AddMetaData(object = seurat.obj, 
+                          metadata = Patient_ID, col.name = "patient.id")
+
+# Normalizing the data
+seurat.obj <- NormalizeData(object = seurat.obj, normalization.method = "LogNormalize", 
+    scale.factor = 10000)
+
+# Detection of variable genes across the single cells
+seurat.obj <- FindVariableGenes(object = seurat.obj, mean.function = ExpMean, dispersion.function = LogVMR, 
+    x.low.cutoff = 0.0125, x.high.cutoff = 3, y.cutoff = 0.5)
+length(x = seurat.obj@var.genes) #6639
+
+# Scaling the data and removing unwanted sources of variation
+seurat.obj <- ScaleData(object = seurat.obj, vars.to.regress = c("nGene", "patient.id"))
+
+# Perform linear dimensional reduction
+seurat.obj <- RunPCA(object = seurat.obj, pc.genes = seurat.obj@var.genes, do.print = TRUE, pcs.print = 1:5, 
+    genes.print = 5)
+# Determine statistically significant principal components
+if(FALSE){
+seurat.obj <- JackStraw(object = seurat.obj, num.replicate = 100, do.print = FALSE)
+JackStrawPlot(object = seurat.obj, PCs = 1:20)
+PCElbowPlot(object = seurat.obj)
+# Cluster the cells
+seurat.obj <- FindClusters(object = seurat.obj, reduction.type = "pca", dims.use = 1:10, 
+    resolution = 0.6, print.output = 0, save.SNN = TRUE)
+PrintFindClustersParams(object = seurat.obj)
+}
+
+set.seed(12344454)
+seurat.obj <- RunTSNE(object = seurat.obj, dims.use = 1:10, do.fast = TRUE)
+TSNEPlot(object = seurat.obj)
+
+# with true cell types
+plot(seurat.obj@dr$tsne@cell.embeddings[,c(1,2)], 
+     main="Spectral tSNE (Seurat)", xlab="Dimension 1", 
+     ylab="Dimension 2",pch=21, col=color.vec[Cell_Type], 
+     bg=color.vec[Cell_Type], oma=c(4,4,6,12))
+legend("topright", levels(Cell_Type), border="white", fill=color.vec, bty="n")
+```
+## Run PCA to cluster islet cells.
+Here, we applied PCA on read counts of all genes. 
+Genes are color coded with their expression of marker genes. 
+```{r run_pca, echo=TRUE, fig.width=7, fig.height=6}
+pairs(pca.res[,1:4], main="PCA", pch=21, col=color.vec[Cell_Type],
+      bg=color.vec[Cell_Type], cex=0.8, oma=c(4,4,6,12))
+legend("right", levels(Cell_Type), border="white", fill=color.vec, bty="n")
+```
+
+## Run surrogate variable analysis (SVA).
+Here, for comparison purposes we conduct SVA on our example data while 
+adjusting for Patient_ID and Geo_Lib_Size and obtained 4 hidden factors. 
+```{r run_sva, echo=TRUE, eval=TRUE, fig.width=7, fig.height=6}
+set.seed(34544455)
+mod1 <- model.matrix(~Patient_ID+Num_Detected_Genes)
+mod0 <- cbind(mod1[,1])
+sva.res = svaseq(counts,mod1,mod0, n.sv=4)$sv
+
+pairs(sva.res[,1:4], main="SVA", pch=21, col=color.vec[Cell_Type], 
+      bg=color.vec[Cell_Type], cex=0.8, oma=c(4,4,6,12))
+legend("right", levels(Cell_Type), border="white", fill=color.vec, bty="n")
+
+```
+
+## Run IA-SVA
+Here, we run IA-SVA using Patient_ID and Geo_Lib_Size as 
+known factors and identify 4 hidden factors. 
+```{r run_iasva, echo=TRUE, fig.width=7, fig.height=6}
+set.seed(345466666)
+mod <- model.matrix(~Patient_ID+Num_Detected_Genes)
+summ_exp <- SummarizedExperiment(assays = counts)
+iasva.res<- iasva(summ_exp, mod[,-1],verbose=FALSE, permute=FALSE, num.sv=4)
+iasva.sv <- iasva.res$sv
+
+## no color
+pairs(iasva.sv[,1:4], pch=21, col="black", bg="black", cex=0.8)
+
+## with color-coding
+pairs(iasva.sv[,1:4], main="IA-SVA", pch=21, col=color.vec[Cell_Type],
+      bg=color.vec[Cell_Type], cex=0.8, oma=c(4,4,6,12))
+legend("right", levels(Cell_Type), border="white", fill=color.vec, bty="n")
+
+```
+
+## Correlation between SVs
+```{r corr_btw_SVs, echo=TRUE, fig.width=6, fig.height=4}
+cor(iasva.sv)
+corrplot(cor(iasva.sv))
+```
+
+## clustering analyses
+Here, try different R2 cutoffs
+```{r clustering, echo=TRUE, fig.width=6, fig.height=16}
+no.clusters <- 4
+C.scores <- matrix(0,0,0)
+Number.of.genes <- matrix(0,0,0)
+for (i in seq(0.1,0.9,0.05)){
+  marker.counts <- find_markers(summ_exp, as.matrix(iasva.sv[,2]), rsq.cutoff = i)
+  no.genes <- dim(marker.counts)[1]
+  if(no.genes == 0){
+    break
+  }
+  else{
+    my.dist <- dist(t(log(marker.counts+1)))
+    my.clustering <- hclust(my.dist, method = "ward.D2")
+    my.silhoutte <-silhouette(cutree(my.clustering,no.clusters),my.dist)
+    C1 <- mean(my.silhoutte[my.silhoutte[,1]==1,3])
+    C2 <- mean(my.silhoutte[my.silhoutte[,1]==2,3])
+    average.C <- (C1+C2)/2
+    C.scores <- c(C.scores, average.C)
+    Number.of.genes <- c(Number.of.genes,no.genes)
+  }
+}
+
+output.matrix <- rbind(C.scores, Number.of.genes)
+
+
+pdf("Clustering_analyses_figure4_Xin.pdf")
+par(mar=c(5,5,5,5))
+end.point <- (length(C.scores)-1)*0.05+0.1
+plot(Number.of.genes,  xlab = "R^2", ylab = "Number genes selected", xaxt="n", main = "Number of selected genes vs. Cluster quality", pch = 18, col ="blue",type="b", lty=2, cex=2)
+Axis(1,at=seq(1,length(Number.of.genes)), side = 1, labels=seq(0.1,end.point,0.05),las = 2)
+par(new=T)
+plot(C.scores, xlab='', ylab='', axes=F, pch = 18 , col ="red",type="b", lty=2, cex=2)
+Axis(side=4)
+mtext(side = 4, line = 2, 'Average Silhoutte Score', col = "red")
+par(new=F)
+dev.off()
+```
+
+## Find marker genes for SV1.
+```{r find_markers_SV1, echo=TRUE, fig.width=7, fig.height=10}
+# try different R2 thresholds
+pdf("Clustering_analyses_figure4_Xin_sv1.pdf")
+r2.results <- study_R2(summ_exp, iasva.sv,selected.svs=1, no.clusters=2)
+dev.off()
+marker.counts <- find_markers(summ_exp, as.matrix(iasva.sv[,c(1)]),  rsq.cutoff = 0.3)
+nrow(marker.counts)
+marker.counts.long <- find_markers(summ_exp, as.matrix(iasva.sv[,c(1)]),  rsq.cutoff = 0.2)
+nrow(marker.counts.long) 
+
+anno.col <- data.frame(Cell_Type=Cell_Type)
+rownames(anno.col) <- colnames(marker.counts)
+head(anno.col)
+cell.type.col <- color.vec[1:4]
+names(cell.type.col) <- c("alpha","beta","delta","PP")
+anno.colors <- list(Cell_Type=cell.type.col)
+
+pheatmap(log(marker.counts+1), show_colnames =FALSE, show_rownames = TRUE,
+         clustering_method = "ward.D2",cutree_cols = 4, 
+         annotation_col = anno.col, annotation_colors=anno.colors)
+```
+
+## Find marker genes for SV3.
+```{r find_markers_SV3, echo=TRUE, fig.width=7, fig.height=10}
+marker.counts.SV3 <- find_markers(summ_exp, as.matrix(iasva.sv[,c(3)]),  rsq.cutoff = 0.3)
+nrow(marker.counts.SV3)
+marker.counts.SV3.long <- find_markers(summ_exp, as.matrix(iasva.sv[,c(3)]),  rsq.cutoff = 0.2)
+nrow(marker.counts.SV3.long)
+
+anno.col <- data.frame(Cell_Type=Cell_Type, SV3=iasva.sv[,3])
+rownames(anno.col) <- colnames(marker.counts.SV3)
+head(anno.col)
+cell.type.col <- color.vec[1:4]
+names(cell.type.col) <- c("alpha","beta","delta","PP")
+anno.colors <- list(Cell_Type=cell.type.col)
+
+pheatmap(log(marker.counts.SV3+1), show_colnames =FALSE, show_rownames = TRUE, clustering_method = "ward.D2",cutree_cols = 2,annotation_col = anno.col, annotation_colors=anno.colors)
+```
+
+
+## Run tSNE post IA-SVA, i.e., run tSNE on marker genes obtained from IA-SVA.
+```{r run_tsne_post_iasva, echo=TRUE, fig.width=7, fig.height=7}
+set.seed(75458456)
+tsne.res.iasva <- Rtsne(unique(t(log(marker.counts+1))), dims = 2)
+
+plot(tsne.res.iasva$Y[,1:2], main="IA-SVA", xlab="tSNE Dim1",
+     ylab="tSNE Dim2", pch=21, col=color.vec[Cell_Type], 
+     bg=color.vec[Cell_Type], oma=c(4,4,6,12))
+legend("topright", levels(Cell_Type), border="white", fill=color.vec, bty="n")
+```
+tSNE performed on marker genes selected via IA-SVA performs better
+than original tSNE analyses using all genes. 
+This example again reiterates the importance of gene selection using 
+IA-SVA for effective clustering of single-cell datasets.
+
+
+```{r gen_Figure4DEFG, fig.width=8, fig.height=9}
+pdf(file="output/Xin_Islets_All_demensionality_reduction_Figure4DEFG.pdf", width=8, height=9)
+par(mfrow=c(2,2))
+plot(tsne.res.all$Y, main="tSNE", xlab="Dimension 1", ylab="Dimension 2",pch=21, col=color.vec[Cell_Type], bg=color.vec[Cell_Type])
+legend("topleft", levels(Cell_Type), border="white", fill=color.vec, bty="n")
+plot(tsne.res.iasva$Y, main="IA-SVA + tSNE", xlab="Dimension 1", ylab="Dimension 2", pch=21, col=color.vec[Cell_Type], bg=color.vec[Cell_Type])
+plot(rtsne_out$Y[,c(1,2)], main="CellView", xlab="Dimension 1", ylab="Dimension 2",pch=21, col=color.vec[Cell_Type], bg=color.vec[Cell_Type])
+plot(seurat.obj@dr$tsne@cell.embeddings[,c(1,2)], main="Spectral tSNE (Seurat)", xlab="Dim1", ylab="Dim2",pch=21, col=color.vec[Cell_Type], bg=color.vec[Cell_Type])
+dev.off()
+```
+```{r gen_FigureS9, fig.height=10, fig.width=10 }
+pdf(file="output/Xin_Islets_AllCells_tSNEByKnownFactors_FigureS9.pdf", width=10, height=11)
+par(mfrow=c(2,2))
+plot(tsne.res.all$Y, main="Gender", xlab="Dimension 1", ylab="Dimension 2", pch=21, col=color.vec[Gender], bg=color.vec[Gender], oma=c(4,4,6,12))
+legend("topleft", levels(Gender), border="white", fill=color.vec, bty="n")
+plot(tsne.res.all$Y, main="Patient ID", xlab="Dimension 1", ylab="Dimension 2", pch=21, col=tol21rainbow[Patient_ID], bg=tol21rainbow[Patient_ID], oma=c(4,4,6,12))
+legend("topleft", levels(Patient_ID), border="white", fill=tol21rainbow, bty="n", cex=0.5)
+plot(tsne.res.all$Y, main="Ethnicity", xlab="Dimension 1", ylab="Dimension 2", pch=21, col=color.vec[Ethnicity], bg=color.vec[Ethnicity], oma=c(4,4,6,12))
+legend("topleft", levels(Ethnicity), border="white", fill=color.vec, bty="n")
+plot(tsne.res.all$Y, main="Phenotype", xlab="Dimension 1", ylab="Dimension 2", pch=21, col=color.vec[Phenotype], bg=color.vec[Phenotype], oma=c(4,4,6,12))
+legend("topleft", levels(Phenotype), border="white", fill=color.vec, bty="n")
+par(mfrow=c(1,1))
+dev.off()
+```
+
+
+```{r gen_FigureS10, fig.height=10, fig.width=10 }
+
+pdf(file="output/Xin_Islets_AllCells_IASVA_nocolor.pdf", width=4, height=4)
+pairs(iasva.sv[,1:4], pch=21, col="black", bg="black", cex=0.3)
+dev.off()
+
+pdf(file="output/Xin_Islets_AllCells_IASVA.pdf", width=4, height=4)
+pairs(iasva.sv[,1:4], pch=21, col=color.vec[Cell_Type], bg=color.vec[Cell_Type], cex=0.3)
+dev.off()
+
+pdf(file="output/Xin_Islets_AllCells_PCA.pdf", width=4, height=4)
+pairs(pca.res[,1:4], pch=21, col=color.vec[Cell_Type], bg=color.vec[Cell_Type], cex=0.3)#
+dev.off()
+
+colnames(sva.res) <- paste0("SV",1:4)
+pdf(file="output/Xin_Islets_AllCells_USVA.pdf", width=4, height=4)
+pairs(sva.res[,1:4], pch=21, col=color.vec[Cell_Type], bg=color.vec[Cell_Type], cex=0.3) #4,4,6,12
+dev.off()
+
+```
+```{r gen_FigureS11}
+anno.col <- data.frame(Cell_Type=Cell_Type)
+rownames(anno.col) <- colnames(marker.counts)
+head(anno.col)
+cell.type.col <- color.vec[1:4]
+names(cell.type.col) <- c("alpha","beta","delta","PP")
+anno.colors <- list(Cell_Type=cell.type.col)
+
+pheatmap(log(marker.counts+1), show_colnames =FALSE, show_rownames = TRUE,
+         clustering_method = "ward.D2",cutree_cols = 4,annotation_col = anno.col, annotation_colors=anno.colors,
+         filename="output/FigureS11_Xin_Islets_AllCells_IASVA_Markers_pheatmap.pdf", width=10, height=10)
+```
+
+
+
+```{r gen_SV1_gene_list}
+write.table(as.data.frame(rownames(marker.counts)), file="output/Xin_Islets_AllCells_SV1_Genes_rsqcutoff0.3.txt", quote=F,
+              row.names=F, col.names=F, sep=" ")
+
+write.table(as.data.frame(rownames(marker.counts.long)), file="output/Xin_Islets_AllCells_SV1_Genes_rsqcutoff0.2.txt", quote=F,
+              row.names=F, col.names=F, sep=" ")
+```
+
+
+```{r gen_SV3_gene_list}
+write.table(as.data.frame(rownames(marker.counts.SV3)), file="output/Xin_Islets_AllCells_SV3_Genes_rsqcutoff0.3.txt", quote=F,
+              row.names=F, col.names=F, sep=" ")
+
+write.table(as.data.frame(rownames(marker.counts.SV3.long)), file="output/Xin_Islets_AllCells_SV3_Genes_rsqcutoff0.2.txt", quote=F,
+              row.names=F, col.names=F, sep=" ")
+```
+

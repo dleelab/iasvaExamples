@@ -1,0 +1,266 @@
+---
+title: "Reviewer 2 Simulation"
+author: "Donghyung Lee"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+---
+
+```{r knitr-opts, include=FALSE}
+knitr::opts_chunk$set(comment = "#",collapse = TRUE)
+```
+```{r load_packages, include=FALSE, message=FALSE}
+rm(list=ls())
+library(iasva)
+library(sva)
+library(SummarizedExperiment)
+```
+
+## Simulation 1
+```{r sim1}
+# Setting up the known and unknown factors. 
+set.seed(10000) 
+known <- runif(1000) 
+unknown <- runif(1000, 0, 0.1) # weak unknown factor 
+
+# Generating Poisson count data from log-normal means. 
+ngenes <- 5000 
+known.effect <- rnorm(ngenes, sd=2) 
+unknown.effect <- rnorm(ngenes, sd=2) 
+mat <- outer(known.effect, known) + 
+outer(unknown.effect, unknown) + 
+2 # to get decent-sized counts 
+
+counts <- matrix(rpois(length(mat), lambda=2^mat), nrow=ngenes) 
+library(SummarizedExperiment) 
+se <- SummarizedExperiment(list(counts=counts)) 
+
+# Running IA-SVA, version 0.99.3. 
+library(iasva) 
+design <- model.matrix(~known) 
+res <- iasva(se, design, num.sv=5, permute = FALSE) 
+plot(res$sv[,1], unknown) 
+
+cor(res$sv[,1], unknown) # these SVs are not the unknown factor (correlation ~= 0) 
+cor(res$sv[,2], unknown) 
+cor(res$sv[,3], unknown) 
+cor(res$sv[,4], unknown) 
+cor(res$sv[,5], unknown) 
+
+cor(res$sv[,1], known) # ... but are instead the known factor (correlation ~= +/-1) 
+cor(res$sv[,2], known) 
+cor(res$sv[,3], known) 
+cor(res$sv[,4], known) 
+cor(res$sv[,5], known) 
+```
+
+## Compare to just naively taking the first PC of the residual matrix. 
+```{r firstPC_residual}
+library(limma) 
+resid <- removeBatchEffect(log(assay(se)+1), covariates=known) 
+pr.out <- prcomp(t(resid), rank.=1) 
+plot(pr.out$x[,1], unknown) 
+cor(pr.out$x[,1], unknown) # close to (-)1 
+cor(pr.out$x[,1], known) # close to zero. 
+```
+
+## Compare to SVA
+```{r existing_methods}
+library(sva)
+mod1 <- model.matrix(~known)
+mod0 <- cbind(mod1[,1])
+sva.res = svaseq(counts,mod1,mod0, n.sv=5)$sv
+plot(sva.res[,1], unknown)
+plot(sva.res[,1], known)
+cor(sva.res[,1], unknown) # -0.55
+cor(sva.res[,1], known) # close to zero. 
+```
+
+## Simulation 2
+```{r sim2}
+set.seed(10000) 
+known <- runif(1000) 
+unknown <- runif(1000) 
+
+ngenes <- 5000 
+known.effect <- rnorm(ngenes, sd=2) 
+unknown.effect <- rnorm(ngenes, sd=2) 
+mat <- outer(known.effect, known) + 
+outer(unknown.effect, unknown) + 
+2 # to get decent-sized counts 
+
+counts <- matrix(rpois(length(mat), lambda=2^mat), nrow=ngenes) 
+library(SummarizedExperiment) 
+se <- SummarizedExperiment(list(counts=counts)) 
+
+library(iasva) 
+design <- model.matrix(~known) 
+res <- iasva(se, design, num.sv=5, permute = FALSE) 
+
+cor(res$sv[,1], unknown) # first SV is the unknown factor. 
+cor(res$sv[,2], unknown) 
+cor(res$sv[,3], unknown) 
+cor(res$sv[,4], unknown) 
+cor(res$sv[,5], unknown) 
+
+cor(res$sv[,1], known) 
+cor(res$sv[,2], known) # but SVs 2-5 are correlated with the known factor... 
+cor(res$sv[,3], known) 
+cor(res$sv[,4], known) 
+cor(res$sv[,5], known) 
+
+
+# Compare to SVA
+library(sva)
+mod1 <- model.matrix(~known)
+mod0 <- cbind(mod1[,1])
+sva.res = svaseq(counts,mod1,mod0, n.sv=3)$sv
+plot(sva.res[,1], unknown)
+plot(sva.res[,1], known)
+cor(sva.res[,1], unknown) # close to (-)1 
+cor(sva.res[,2], unknown)
+cor(sva.res[,3], unknown) 
+
+cor(sva.res[,1], known) # close to zero. 
+cor(sva.res[,2], known)
+cor(sva.res[,3], known)
+
+```
+
+
+## Corrected Simulation 1 with low correlation btw known and hidden factors
+```{r sim1_corrected}
+# Setting up the known and unknown factors. 
+set.seed(10000) 
+sample.size <- 100
+ngenes <- 5000
+# CORRECTEION: Here, we simulate factors with two levels (0 or 1).
+factor.prop <- 0.5
+flip.prob <- 0.5 ## to make no correlation btw known and hidden factors
+known <- c(rep(-1,each=sample.size*factor.prop),rep(1,each=sample.size-(sample.size*factor.prop)))
+coinflip = rbinom(sample.size,size=1,prob=flip.prob)
+unknown = known*coinflip + -known*(1-coinflip)
+cor(known, unknown)
+
+# Generating Poisson count data from log-normal means. 
+ngenes <- 5000 
+known.effect <- rnorm(ngenes, sd=2) 
+unknown.effect <- rnorm(ngenes, sd=2) ## CORRECTION: to make factor with weach effect size, we use 1 as SD here.
+
+mat <- outer(known.effect, known) + outer(unknown.effect, unknown) + 2 # to get decent-sized counts 
+
+counts <- matrix(rpois(length(mat), lambda=2^mat), nrow=ngenes)
+se <- SummarizedExperiment(assays=counts) 
+
+# Running IA-SVA, version 0.99.3. 
+library(iasva) 
+design <- model.matrix(~known) 
+## CORRECTION: IASVA doesn't accept the constant term of design matrix, so we use design[,-1] instead of design
+res <- iasva(se, as.matrix(design[,-1]), num.sv=5, permute=FALSE) #num.p=20, threads=8) 
+plot(res$sv[,1], unknown) 
+
+cor(res$sv[,1], unknown) # these SVs are not the unknown factor (correlation ~= 0) 
+cor(res$sv[,2], unknown) 
+cor(res$sv[,3], unknown) 
+cor(res$sv[,4], unknown) 
+cor(res$sv[,5], unknown) 
+
+cor(res$sv[,1], known) # ... but are instead the known factor (correlation ~= +/-1) 
+cor(res$sv[,2], known) 
+cor(res$sv[,3], known) 
+cor(res$sv[,4], known) 
+cor(res$sv[,5], known) 
+
+# Compare to just naively taking the first PC of the residual matrix. 
+library(limma) 
+resid <- removeBatchEffect(log(assay(se)+1), covariates=known) 
+pr.out <- prcomp(t(resid), rank.=1) 
+plot(pr.out$x[,1], unknown) 
+cor(pr.out$x[,1], unknown) # close to (-)1 
+cor(pr.out$x[,1], known) # close to zero. 
+
+
+# Compare to SVA
+library(sva)
+mod1 <- model.matrix(~known)
+mod0 <- cbind(mod1[,1])
+sva.res = svaseq(counts,mod1,mod0, n.sv=3)$sv
+plot(sva.res[,1], unknown)
+plot(sva.res[,1], known)
+cor(sva.res[,1], unknown) # close to (-)1 
+cor(sva.res[,1], known) # close to zero. 
+```
+
+
+## Corrected Simulation 1 with high correlation btw known and hidden factors
+```{r sim1_corrected_high_corr}
+# Setting up the known and unknown factors. 
+set.seed(10000) 
+sample.size <- 100 ##CORRECTION, to reduce the computational burden, we used smaller sample size.
+ngenes <- 5000
+# CORRECTEION: Here, we simulate factors with two levels (0 or 1).
+factor.prop <- 0.5
+flip.prob <- 0.8 ## to make no correlation btw known and hidden factors
+known <- c(rep(-1,each=sample.size*factor.prop),rep(1,each=sample.size-(sample.size*factor.prop)))
+coinflip = rbinom(sample.size,size=1,prob=flip.prob)
+unknown = known*coinflip + -known*(1-coinflip)
+cor(known, unknown)
+
+# Generating Poisson count data from log-normal means. 
+ngenes <- 5000 
+known.effect <- rnorm(ngenes, sd=2) 
+unknown.effect <- rnorm(ngenes, sd=2) ## CORRECTION: to make factor with weach effect size, we use 1 as SD here.
+
+mat <- outer(known.effect, known) + outer(unknown.effect, unknown) + 2 # to get decent-sized counts 
+
+counts <- matrix(rpois(length(mat), lambda=2^mat), nrow=ngenes)
+se <- SummarizedExperiment(assays=counts) 
+
+# Running IA-SVA, version 0.99.3. 
+library(iasva) 
+design <- model.matrix(~known) 
+## CORRECTION: IASVA doesn't accept the constant term of design matrix, so we use design[,-1] instead of design
+res <- iasva(se, as.matrix(design[,-1]), num.sv=5, permute=FALSE) #num.p=20, threads=8) 
+
+plot(res$sv[,1], unknown) 
+cor(res$sv[,1], unknown) # accurately estimate the hidden factor (correlation ~= +/-1) 
+cor(res$sv[,2], unknown) 
+cor(res$sv[,3], unknown) 
+cor(res$sv[,4], unknown) 
+cor(res$sv[,5], unknown) 
+
+cor(res$sv[,1], known) # ... but are instead the known factor (correlation ~= +/-1) 
+cor(res$sv[,2], known) 
+cor(res$sv[,3], known) 
+cor(res$sv[,4], known) 
+cor(res$sv[,5], known) 
+
+res1 <- iasva(se, as.matrix(design[,-1]), threads=8) 
+plot(res1$sv[,1], unknown) 
+cor(res1$sv[,1], unknown) # accurately estimate the hidden factor (correlation ~= +/-1) 
+cor(res1$sv[,2], unknown) # 
+
+# Compare to just naively taking the first PC of the residual matrix. 
+library(limma) 
+resid <- removeBatchEffect(log(assay(se)+1), covariates=known) 
+pr.out <- prcomp(t(resid), rank.=1) 
+plot(pr.out$x[,1], unknown) 
+cor(pr.out$x[,1], unknown) # close to (-)1 
+cor(pr.out$x[,1], known) # close to zero. 
+
+
+# Compare to SVA
+library(sva)
+mod1 <- model.matrix(~known)
+mod0 <- cbind(mod1[,1])
+sva.res = svaseq(counts,mod1,mod0, n.sv=3)$sv
+plot(sva.res[,1], unknown)
+plot(sva.res[,1], known)
+cor(sva.res[,1], unknown) # close to (-)1 
+cor(sva.res[,1], known) # close to zero. 
+```
+
+
+
+
