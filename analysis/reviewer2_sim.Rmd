@@ -10,6 +10,7 @@ output:
 ```{r knitr-opts, include=FALSE}
 knitr::opts_chunk$set(comment = "#",collapse = TRUE)
 ```
+
 ```{r load_packages, include=FALSE, message=FALSE}
 rm(list=ls())
 library(iasva)
@@ -17,7 +18,7 @@ library(sva)
 library(SummarizedExperiment)
 ```
 
-## Simulation 1
+## The reviewer 2's simulation #1 with weak unknown factor.
 ```{r sim1}
 # Setting up the known and unknown factors. 
 set.seed(10000) 
@@ -28,9 +29,7 @@ unknown <- runif(1000, 0, 0.1) # weak unknown factor
 ngenes <- 5000 
 known.effect <- rnorm(ngenes, sd=2) 
 unknown.effect <- rnorm(ngenes, sd=2) 
-mat <- outer(known.effect, known) + 
-outer(unknown.effect, unknown) + 
-2 # to get decent-sized counts 
+mat <- outer(known.effect, known) + outer(unknown.effect, unknown) + 2 # to get decent-sized counts 
 
 counts <- matrix(rpois(length(mat), lambda=2^mat), nrow=ngenes) 
 library(SummarizedExperiment) 
@@ -53,42 +52,38 @@ cor(res$sv[,2], known)
 cor(res$sv[,3], known) 
 cor(res$sv[,4], known) 
 cor(res$sv[,5], known) 
-```
 
 ## Compare to just naively taking the first PC of the residual matrix. 
-```{r firstPC_residual}
 library(limma) 
 resid <- removeBatchEffect(log(assay(se)+1), covariates=known) 
 pr.out <- prcomp(t(resid), rank.=1) 
 plot(pr.out$x[,1], unknown) 
-cor(pr.out$x[,1], unknown) # close to (-)1 
-cor(pr.out$x[,1], known) # close to zero. 
-```
+abs(cor(pr.out$x[,1], unknown)) # close to 1 
+abs(cor(pr.out$x[,1], known)) # close to zero. 
 
 ## Compare to SVA
-```{r existing_methods}
 library(sva)
 mod1 <- model.matrix(~known)
 mod0 <- cbind(mod1[,1])
 sva.res = svaseq(counts,mod1,mod0, n.sv=5)$sv
 plot(sva.res[,1], unknown)
 plot(sva.res[,1], known)
-cor(sva.res[,1], unknown) # -0.55
-cor(sva.res[,1], known) # close to zero. 
+abs(cor(sva.res[,1], unknown)) # 0.55
+abs(cor(sva.res[,1], known)) # close to zero. 
 ```
 
-## Simulation 2
+
+## The reviewer 2's simulation #2 with stronger effect size.
 ```{r sim2}
 set.seed(10000) 
+
 known <- runif(1000) 
 unknown <- runif(1000) 
 
 ngenes <- 5000 
 known.effect <- rnorm(ngenes, sd=2) 
 unknown.effect <- rnorm(ngenes, sd=2) 
-mat <- outer(known.effect, known) + 
-outer(unknown.effect, unknown) + 
-2 # to get decent-sized counts 
+mat <- outer(known.effect, known) + outer(unknown.effect, unknown) + 2 # to get decent-sized counts 
 
 counts <- matrix(rpois(length(mat), lambda=2^mat), nrow=ngenes) 
 library(SummarizedExperiment) 
@@ -115,27 +110,27 @@ cor(res$sv[,5], known)
 library(sva)
 mod1 <- model.matrix(~known)
 mod0 <- cbind(mod1[,1])
-sva.res = svaseq(counts,mod1,mod0, n.sv=3)$sv
+sva.res = svaseq(counts,mod1,mod0, n.sv=1)$sv
 plot(sva.res[,1], unknown)
 plot(sva.res[,1], known)
-cor(sva.res[,1], unknown) # close to (-)1 
-cor(sva.res[,2], unknown)
-cor(sva.res[,3], unknown) 
-
-cor(sva.res[,1], known) # close to zero. 
-cor(sva.res[,2], known)
-cor(sva.res[,3], known)
-
+abs(cor(sva.res[,1], unknown)) # close to 1 
+abs(cor(sva.res[,1], known)) # close to zero. 
 ```
 
 
-## Corrected Simulation 1 with low correlation btw known and hidden factors
+## Several issues in the simulation studies suggested by the reviewer #2
+We noticed several issues in these simulations. First, SVA or factor analysis based methods including IA-SVA are designed to estimate hidden variables with distinct levels (i.e., factors) or a transformation of factors. However, instead of simulating factors (e.g., a variable with two levels (1 and -1)) as typically done in such analyses1,2 (e.g., see http://jtleek.com/svaseq/simulateData.html and Method section (Simulated data) of https://www.biorxiv.org/content/biorxiv/early/2017/10/27/200345.full.pdf), the reviewer simulated numeric vectors from a uniform distribution (e.g., runif(1000)) and used them as hidden variables. We note that this leads, like IA-SVA, SVA also to perform poorly in the simulation study (r = -0.55) (see https://dleelab.github.io/iasvaExamples/reviewer2_sim.html). Second, IA-SVA does not accept intercept column in the design matrix; therefore instead of design, design[,-1] should have been used in these simulations. Third, the reviewer simulated counts using a Poisson distribution (mean = variance); however, negative binomial or zero-inflated negative binomial is a more appropriate model to simulate high variability (mean << variance) in bulk or single cell RNA-seq data. Fourth, even though only one hidden factor is simulated in the study, IA-SVA was forced to generate five hidden factors by setting the option ‘num.sv’ = 5. This leads IA-SVA to generate SV2-SV5, which are highly correlated SV1. To avoid this, we recommend users using the permutation procedure (by setting the default setting for option ‘permute’ (i.e, permute = TRUE) in ‘iasva’ function) or ‘fast_iasva’ function to determine the number of meaningful hidden factors. Lastly, to simulate a hidden factor with stronger effect sizes, the standard deviation (sd) in “unknown.effect <- rnorm(ngenes, sd=2) ” should be increased (e.g., sd=4); rather increasing the range of simulated factor values from “unknown <- runif(1000, 0, 0.1)” to “unknown <- runif(1000) ”. We have repeated the simulation studies by taking into consideration these points below.  
+
+## Corrected simulation #1 with low correlation btw known and hidden factors
 ```{r sim1_corrected}
 # Setting up the known and unknown factors. 
 set.seed(10000) 
-sample.size <- 100
-ngenes <- 5000
-# CORRECTEION: Here, we simulate factors with two levels (0 or 1).
+
+## to reduce the computational burden, we reduced the sample size (# of cells) and # of genes.
+sample.size <- 100 
+ngenes <- 2000     
+
+# CORRECTEION: Here, we simulate factors with two levels (-1 or 1).
 factor.prop <- 0.5
 flip.prob <- 0.5 ## to make no correlation btw known and hidden factors
 known <- c(rep(-1,each=sample.size*factor.prop),rep(1,each=sample.size-(sample.size*factor.prop)))
@@ -144,121 +139,120 @@ unknown = known*coinflip + -known*(1-coinflip)
 cor(known, unknown)
 
 # Generating Poisson count data from log-normal means. 
-ngenes <- 5000 
-known.effect <- rnorm(ngenes, sd=2) 
-unknown.effect <- rnorm(ngenes, sd=2) ## CORRECTION: to make factor with weach effect size, we use 1 as SD here.
+# CORRECTION: to make factor with weak effect size, we use 1 as SD here.
+known.effect <- rnorm(ngenes, sd=1) 
+unknown.effect <- rnorm(ngenes, sd=1)
+
+# To make estimation of the hidden factor more challenging, here we ramdomly select 1500 and 1800 genes from each effect size vector and set their effect sizes as 0. That is, 25% and 5% of genes are affected by the known and hidden factors, respectively. 
+known.effect[sample(1:ngenes, 1500, replace=FALSE)] <- 0
+unknown.effect[sample(1:ngenes, 1900, replace=FALSE)] <- 0
 
 mat <- outer(known.effect, known) + outer(unknown.effect, unknown) + 2 # to get decent-sized counts 
-
 counts <- matrix(rpois(length(mat), lambda=2^mat), nrow=ngenes)
 se <- SummarizedExperiment(assays=counts) 
 
 # Running IA-SVA, version 0.99.3. 
 library(iasva) 
 design <- model.matrix(~known) 
-## CORRECTION: IASVA doesn't accept the constant term of design matrix, so we use design[,-1] instead of design
-res <- iasva(se, as.matrix(design[,-1]), num.sv=5, permute=FALSE) #num.p=20, threads=8) 
+
+# CORRECTION: IASVA doesn't accept the constant term of design matrix, so we use design[,-1] instead of design
+res <- iasva(se, as.matrix(design[,-1]), threads=8) # iasva detected only one hidden factor.
+# fast_iasva used here.
+res.fast <- fast_iasva(se, as.matrix(design[,-1]))  # fast_iasva detected only one hidden factor.
+
 plot(res$sv[,1], unknown) 
+abs(cor(res$sv[,1], unknown)) ## absolute value of cor(SV1, unknown factor) = 0.9995
+abs(cor(res$sv[,1], known))   ## absolute value of cor(SV1, known factor) close to zero.
 
-cor(res$sv[,1], unknown) # these SVs are not the unknown factor (correlation ~= 0) 
-cor(res$sv[,2], unknown) 
-cor(res$sv[,3], unknown) 
-cor(res$sv[,4], unknown) 
-cor(res$sv[,5], unknown) 
+plot(res.fast$sv[,1], unknown) 
+abs(cor(res.fast$sv[,1], unknown)) ## absolute value of cor(SV1, unknown factor) = 0.9995
+abs(cor(res.fast$sv[,1], known))   ## absolute value of cor(SV1, known factor) close to zero.
 
-cor(res$sv[,1], known) # ... but are instead the known factor (correlation ~= +/-1) 
-cor(res$sv[,2], known) 
-cor(res$sv[,3], known) 
-cor(res$sv[,4], known) 
-cor(res$sv[,5], known) 
 
 # Compare to just naively taking the first PC of the residual matrix. 
 library(limma) 
 resid <- removeBatchEffect(log(assay(se)+1), covariates=known) 
 pr.out <- prcomp(t(resid), rank.=1) 
 plot(pr.out$x[,1], unknown) 
-cor(pr.out$x[,1], unknown) # close to (-)1 
-cor(pr.out$x[,1], known) # close to zero. 
+abs(cor(pr.out$x[,1], unknown)) # close to 1 
+abs(cor(pr.out$x[,1], known)) # close to zero. 
 
 
 # Compare to SVA
 library(sva)
 mod1 <- model.matrix(~known)
 mod0 <- cbind(mod1[,1])
-sva.res = svaseq(counts,mod1,mod0, n.sv=3)$sv
+sva.res = svaseq(counts,mod1,mod0)$sv
 plot(sva.res[,1], unknown)
-plot(sva.res[,1], known)
-cor(sva.res[,1], unknown) # close to (-)1 
-cor(sva.res[,1], known) # close to zero. 
+abs(cor(sva.res[,1], unknown)) # close to 1 
+abs(cor(sva.res[,1], known)) # close to zero. 
 ```
 
-
-## Corrected Simulation 1 with high correlation btw known and hidden factors
+## Corrected Simulation 1 with high correlation btw known and hidden factors with stronger effect sizes
 ```{r sim1_corrected_high_corr}
 # Setting up the known and unknown factors. 
 set.seed(10000) 
-sample.size <- 100 ##CORRECTION, to reduce the computational burden, we used smaller sample size.
-ngenes <- 5000
-# CORRECTEION: Here, we simulate factors with two levels (0 or 1).
+
+# to reduce the computational burden, we reduced the sample size (# of cells) and # of genes.
+sample.size <- 100 
+ngenes <- 2000     
+
+# CORRECTEION: Here, we simulate factors with two levels (-1 or 1).
 factor.prop <- 0.5
-flip.prob <- 0.8 ## to make no correlation btw known and hidden factors
+flip.prob <- 0.8 # to simulate high correlation btw known and hidden factors
 known <- c(rep(-1,each=sample.size*factor.prop),rep(1,each=sample.size-(sample.size*factor.prop)))
 coinflip = rbinom(sample.size,size=1,prob=flip.prob)
 unknown = known*coinflip + -known*(1-coinflip)
-cor(known, unknown)
-
+cor(known, unknown) # correlation between known and unknown factors = 0.7
+ 
 # Generating Poisson count data from log-normal means. 
-ngenes <- 5000 
+# CORRECTION: to make factor with stronger effect size, we use 2 as SD here.
 known.effect <- rnorm(ngenes, sd=2) 
-unknown.effect <- rnorm(ngenes, sd=2) ## CORRECTION: to make factor with weach effect size, we use 1 as SD here.
+unknown.effect <- rnorm(ngenes, sd=2)
+
+# To make estimation of the hidden factor more challenging, here we ramdomly select 1500 and 1800 genes from each effect size vector and set their effect sizes as 0. That is, 25% and 5% of genes are affected by the known and hidden factors, respectively. 
+known.effect[sample(1:ngenes, 1500, replace=FALSE)] <- 0
+unknown.effect[sample(1:ngenes, 1900, replace=FALSE)] <- 0
 
 mat <- outer(known.effect, known) + outer(unknown.effect, unknown) + 2 # to get decent-sized counts 
-
 counts <- matrix(rpois(length(mat), lambda=2^mat), nrow=ngenes)
 se <- SummarizedExperiment(assays=counts) 
 
 # Running IA-SVA, version 0.99.3. 
 library(iasva) 
 design <- model.matrix(~known) 
-## CORRECTION: IASVA doesn't accept the constant term of design matrix, so we use design[,-1] instead of design
-res <- iasva(se, as.matrix(design[,-1]), num.sv=5, permute=FALSE) #num.p=20, threads=8) 
+
+# CORRECTION: IASVA doesn't accept the constant term of design matrix, so we use design[,-1] instead of design
+res <- iasva(se, as.matrix(design[,-1]), threads=8) # iasva detected only one hidden factor.
+# fast_iasva used here.
+res.fast <- fast_iasva(se, as.matrix(design[,-1]))  # fast_iasva detected only one hidden factor.
 
 plot(res$sv[,1], unknown) 
-cor(res$sv[,1], unknown) # accurately estimate the hidden factor (correlation ~= +/-1) 
-cor(res$sv[,2], unknown) 
-cor(res$sv[,3], unknown) 
-cor(res$sv[,4], unknown) 
-cor(res$sv[,5], unknown) 
+abs(cor(res$sv[,1], unknown)) ## absolute value of cor(SV1, unknown factor) = 0.9995
+abs(cor(res$sv[,1], known))   ## absolute value of cor(SV1, known factor) close to 0.7.
 
-cor(res$sv[,1], known) # ... but are instead the known factor (correlation ~= +/-1) 
-cor(res$sv[,2], known) 
-cor(res$sv[,3], known) 
-cor(res$sv[,4], known) 
-cor(res$sv[,5], known) 
+plot(res.fast$sv[,1], unknown) 
+abs(cor(res.fast$sv[,1], unknown)) ## absolute value of cor(SV1, unknown factor) = 0.9995
+abs(cor(res.fast$sv[,1], known))   ## absolute value of cor(SV1, known factor) close to 0.7.
 
-res1 <- iasva(se, as.matrix(design[,-1]), threads=8) 
-plot(res1$sv[,1], unknown) 
-cor(res1$sv[,1], unknown) # accurately estimate the hidden factor (correlation ~= +/-1) 
-cor(res1$sv[,2], unknown) # 
 
-# Compare to just naively taking the first PC of the residual matrix. 
+# Compare to just naively taking the first PC of the residual matrix.
 library(limma) 
 resid <- removeBatchEffect(log(assay(se)+1), covariates=known) 
 pr.out <- prcomp(t(resid), rank.=1) 
 plot(pr.out$x[,1], unknown) 
-cor(pr.out$x[,1], unknown) # close to (-)1 
-cor(pr.out$x[,1], known) # close to zero. 
+abs(cor(pr.out$x[,1], unknown)) # cor = 0.7 
+abs(cor(pr.out$x[,1], known)) # close to zero. 
 
 
 # Compare to SVA
 library(sva)
 mod1 <- model.matrix(~known)
 mod0 <- cbind(mod1[,1])
-sva.res = svaseq(counts,mod1,mod0, n.sv=3)$sv
+sva.res = svaseq(counts,mod1,mod0)$sv
 plot(sva.res[,1], unknown)
-plot(sva.res[,1], known)
-cor(sva.res[,1], unknown) # close to (-)1 
-cor(sva.res[,1], known) # close to zero. 
+abs(cor(sva.res[,1], unknown)) # cor = 0.7 
+abs(cor(sva.res[,1], known)) # close to zero.
 ```
 
 
