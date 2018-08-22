@@ -69,7 +69,7 @@ abs(cor(sva.res[,1], unknown)) # 0.55
 abs(cor(sva.res[,1], known)) # close to zero.
 
 hf.mat <- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
-colnames(hf.mat) <- c("HF", "IASVA","PCA","SVA")
+colnames(hf.mat) <- c("HF", "IASVA","PC1_Residual","SVA")
 corrplot.mixed(abs(cor(hf.mat)), tl.pos="lt")
 
 ```
@@ -123,7 +123,7 @@ abs(cor(sva.res[,1], unknown)) # close to 1
 abs(cor(sva.res[,1], known)) # close to zero.
 
 hf.mat <- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
-colnames(hf.mat) <- c("HF", "IASVA","PCA","SVA")
+colnames(hf.mat) <- c("HF", "IASVA","PC1_Residual","SVA")
 corrplot.mixed(abs(cor(hf.mat)), tl.pos="lt")
 ```
 
@@ -198,13 +198,13 @@ abs(cor(sva.res[,1], unknown)) # close to 1
 abs(cor(sva.res[,1], known)) # close to zero. 
 
 hf.mat <- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
-colnames(hf.mat) <- c("HF", "IA-SVA","PCA","SVA")
+colnames(hf.mat) <- c("HF", "IA-SVA","PC1_Residual","SVA")
 corrplot.mixed(abs(cor(hf.mat)), tl.pos="lt")
 ```
 
 ## Corrected Simulation with high correlation btw known and hidden factors with stronger effect sizes
 Here, we simulated known and hidden factors are strongly correlated (r=0.7) and affect 25% and 5% of genes respectively. We also simulated stronger effect sizes by increasing sd from 1 to 2 when simulating effect sizes from normal distribution,"unknown.effect <- rnorm(ngenes, sd=2)".
-```{r sim1_corrected_high_corr, fig.width=6, fig.height=6}
+```{r sim_corrected_high_corr, fig.width=6, fig.height=6}
 # Setting up the known and unknown factors. 
 set.seed(10000) 
 
@@ -270,14 +270,14 @@ abs(cor(sva.res[,1], unknown)) # cor = 0.7
 abs(cor(sva.res[,1], known)) # close to zero.
 
 hf.mat <- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
-colnames(hf.mat) <- c("HF", "IA-SVA","PCA","SVA")
+colnames(hf.mat) <- c("HF", "IA-SVA","PC1_Residual","SVA")
 corrplot.mixed(abs(cor(hf.mat)), tl.pos="lt")
 ```
 
 
-## More extreme scenario.
-Here, we simulated known and hidden factors to affect only 100 (5%) and 20 (1%) genes respectively. We simulated the 20 genes affected by the hidden factor to be also affected by the known factor. Similarly, the two factors are highly correlated (r=0.7).  
-```{r sim1_corrected_high_corr_extreme, fig.width=6, fig.height=6}
+## More challenging scenario.
+Here, we simulated the known and hidden factors to affect only 100 (5%) and 20 (1%) genes respectively. We simulated the 20 genes affected by the hidden factor to be also affected by the known factor. Similarly, the two factors are highly correlated (r=0.7).  
+```{r sim_corrected_high_corr_challenging, fig.width=6, fig.height=6}
 # Setting up the known and unknown factors. 
 set.seed(10000) 
 
@@ -344,6 +344,6 @@ abs(cor(sva.res[,1], unknown)) # cor = 0.7
 abs(cor(sva.res[,1], known)) # close to zero.
 
 hf.mat <- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
-colnames(hf.mat) <- c("HF", "IA-SVA","PCA","SVA")
+colnames(hf.mat) <- c("HF", "IA-SVA","PC1_Residual","SVA")
 corrplot.mixed(abs(cor(hf.mat)), tl.pos="lt")
 ```
