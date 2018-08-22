@@ -11,7 +11,7 @@
 
 <meta name="author" content="Donghyung Lee" />
 
-<meta name="date" content="2018-07-31" />
+<meta name="date" content="2018-08-22" />
 
 <title>Reviewer 2 Simulation</title>
 
@@ -24,7 +24,6 @@
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
 <link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
-<link href="site_libs/font-awesome-4.5.0/css/font-awesome.min.css" rel="stylesheet" />
 
 <style type="text/css">code{white-space: pre;}</style>
 <style type="text/css">
@@ -184,19 +183,14 @@ $(document).ready(function () {
   <a href="index.html">Home</a>
 </li>
 <li>
-  <a href="about.html">About</a>
+  <a href="license.html">License</a>
 </li>
 <li>
-  <a href="license.html">License</a>
+  <a href="https://github.com/dleelab/iasvaExamples">GitHub</a>
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
-        <li>
-  <a href="https://github.com/dleelab/iasvaExamples">
-    <span class="fa fa-github"></span>
-     
-  </a>
-</li>
+        
       </ul>
     </div><!--/.nav-collapse -->
   </div><!--/.container -->
@@ -215,27 +209,28 @@ div.section {
 
 <h1 class="title toc-ignore">Reviewer 2 Simulation</h1>
 <h4 class="author"><em>Donghyung Lee</em></h4>
-<h4 class="date"><em>2018-07-31</em></h4>
+<h4 class="date"><em>2018-08-22</em></h4>
 
 </div>
 
 <div id="TOC">
 <ul>
-<li><a href="#simulation-1">Simulation 1</a></li>
-<li><a href="#compare-to-just-naively-taking-the-first-pc-of-the-residual-matrix.">Compare to just naively taking the first PC of the residual matrix.</a></li>
-<li><a href="#compare-to-sva">Compare to SVA</a></li>
-<li><a href="#simulation-2">Simulation 2</a></li>
-<li><a href="#corrected-simulation-1-with-low-correlation-btw-known-and-hidden-factors">Corrected Simulation 1 with low correlation btw known and hidden factors</a></li>
-<li><a href="#corrected-simulation-1-with-high-correlation-btw-known-and-hidden-factors">Corrected Simulation 1 with high correlation btw known and hidden factors</a></li>
+<li><a href="#the-reviewer-2s-simulation-1-with-weak-unknown-factor.">The reviewer 2’s simulation #1 with weak unknown factor.</a></li>
+<li><a href="#the-reviewer-2s-simulation-2-with-stronger-effect-size.">The reviewer 2’s simulation #2 with stronger effect size.</a></li>
+<li><a href="#several-issues-in-the-simulation-studies-suggested-by-the-reviewer-2">Several issues in the simulation studies suggested by the reviewer #2</a></li>
+<li><a href="#corrected-simulation-with-low-correlation-btw-known-and-hidden-factors">Corrected simulation with low correlation btw known and hidden factors</a></li>
+<li><a href="#corrected-simulation-with-high-correlation-btw-known-and-hidden-factors-with-stronger-effect-sizes">Corrected Simulation with high correlation btw known and hidden factors with stronger effect sizes</a></li>
+<li><a href="#more-challenging-scenario.">More challenging scenario.</a></li>
 <li><a href="#session-information">Session information</a></li>
 </ul>
 </div>
 
-<p><strong>Last updated:</strong> 2018-07-31</p>
+<p><strong>Last updated:</strong> 2018-08-22</p>
 <strong>workflowr checks:</strong> <small>(Click a bullet for more information)</small>
 <ul>
 <li>
-<p><details> <summary> <strong style="color:red;">✖</strong> <strong>R Markdown file:</strong> uncommitted changes </summary> The R Markdown is untracked by Git. To know which version of the R Markdown file created these results, you’ll want to first commit it to the Git repo. If you’re still working on the analysis, you can ignore this warning. When you’re finished, you can run <code>wflow_publish</code> to commit the R Markdown file and build the HTML.</p>
+<p><details> <summary> <strong style="color:blue;">✔</strong> <strong>R Markdown file:</strong> up-to-date </summary></p>
+<p>Great! Since the R Markdown file has been committed to the Git repository, you know the exact version of the code that produced these results.</p>
 </details>
 </li>
 <li>
@@ -254,7 +249,7 @@ div.section {
 </details>
 </li>
 <li>
-<p><details> <summary> <strong style="color:blue;">✔</strong> <strong>Repository version:</strong> <a href="https://github.com/dleelab/iasvaExamples/tree/e0cbded44bacfcefd286ef233b3a1ac52325a78c" target="_blank">e0cbded</a> </summary></p>
+<p><details> <summary> <strong style="color:blue;">✔</strong> <strong>Repository version:</strong> <a href="https://github.com/dleelab/iasvaExamples/tree/17ebb0364f4b76ba44d101be572d065b84338d5f" target="_blank">17ebb03</a> </summary></p>
 Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility. The version displayed above was the version of the Git repository at the time these results were generated. <br><br> Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
 <pre><code>
 Ignored files:
@@ -266,27 +261,125 @@ Ignored files:
     Ignored:    inst/doc/.DS_Store
     Ignored:    vignettes/.DS_Store
 
-Untracked files:
-    Untracked:  analysis/Brain_scRNASeq_neuron_vs_oligodendrocyte_single_run.Rmd
-    Untracked:  analysis/detecting_hidden_heterogeneity.Rmd
-    Untracked:  analysis/hidden_heterogeneity_glioblastoma.Rmd
-    Untracked:  analysis/reviewer2_sim.Rmd
-    Untracked:  analysis/scRNASeq_simulation.Rmd
-    Untracked:  analysis/sim_study_KF_HF_genes_overlap.Rmd
-    Untracked:  analysis/tSNE_post_IA-SVA_3celltypes.Rmd
-    Untracked:  analysis/tSNE_post_IA-SVA_Xin_Islets.Rmd
-
-Unstaged changes:
-    Modified:   analysis/_site.yml
-    Modified:   analysis/index.Rmd
-
 </code></pre>
 Note that any generated files, e.g. HTML, png, CSS, etc., are not included in this status report because it is ok for generated content to have uncommitted changes. </details>
 </li>
 </ul>
+<details> <summary> <small><strong>Expand here to see past versions:</strong></small> </summary>
+<ul>
+<table style="border-collapse:separate; border-spacing:5px;">
+<thead>
+<tr>
+<th style="text-align:left;">
+File
+</th>
+<th style="text-align:left;">
+Version
+</th>
+<th style="text-align:left;">
+Author
+</th>
+<th style="text-align:left;">
+Date
+</th>
+<th style="text-align:left;">
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Rmd
+</td>
+<td style="text-align:left;">
+<a href="https://github.com/dleelab/iasvaExamples/blob/17ebb0364f4b76ba44d101be572d065b84338d5f/analysis/reviewer2_sim.Rmd" target="_blank">17ebb03</a>
+</td>
+<td style="text-align:left;">
+dleelab
+</td>
+<td style="text-align:left;">
+2018-08-22
+</td>
+<td style="text-align:left;">
+text edit
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Rmd
+</td>
+<td style="text-align:left;">
+<a href="https://github.com/dleelab/iasvaExamples/blob/fa4ce46fa17184b7a3e51f999086676f9d5e87c5/analysis/reviewer2_sim.Rmd" target="_blank">fa4ce46</a>
+</td>
+<td style="text-align:left;">
+dleelab
+</td>
+<td style="text-align:left;">
+2018-08-21
+</td>
+<td style="text-align:left;">
+figure changed
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Rmd
+</td>
+<td style="text-align:left;">
+<a href="https://github.com/dleelab/iasvaExamples/blob/cf73dbbe3747c9cc457d7e9f4ea3c297cabebf04/analysis/reviewer2_sim.Rmd" target="_blank">cf73dbb</a>
+</td>
+<td style="text-align:left;">
+dleelab
+</td>
+<td style="text-align:left;">
+2018-08-21
+</td>
+<td style="text-align:left;">
+reviewer2 sim updated
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Rmd
+</td>
+<td style="text-align:left;">
+<a href="https://github.com/dleelab/iasvaExamples/blob/c241b04dac899407045051a04b7539237f4d183f/analysis/reviewer2_sim.Rmd" target="_blank">c241b04</a>
+</td>
+<td style="text-align:left;">
+dleelab
+</td>
+<td style="text-align:left;">
+2018-08-03
+</td>
+<td style="text-align:left;">
+added
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+html
+</td>
+<td style="text-align:left;">
+<a href="https://cdn.rawgit.com/dleelab/iasvaExamples/c241b04dac899407045051a04b7539237f4d183f/docs/reviewer2_sim.html" target="_blank">c241b04</a>
+</td>
+<td style="text-align:left;">
+dleelab
+</td>
+<td style="text-align:left;">
+2018-08-03
+</td>
+<td style="text-align:left;">
+added
+</td>
+</tr>
+</tbody>
+</table>
+</ul>
+<p></details></p>
 <hr />
-<div id="simulation-1" class="section level2">
-<h2>Simulation 1</h2>
+<div id="the-reviewer-2s-simulation-1-with-weak-unknown-factor." class="section level2">
+<h2>The reviewer 2’s simulation #1 with weak unknown factor.</h2>
 <pre class="r"><code># Setting up the known and unknown factors. 
 set.seed(10000) 
 known &lt;- runif(1000) 
@@ -296,9 +389,7 @@ unknown &lt;- runif(1000, 0, 0.1) # weak unknown factor
 ngenes &lt;- 5000 
 known.effect &lt;- rnorm(ngenes, sd=2) 
 unknown.effect &lt;- rnorm(ngenes, sd=2) 
-mat &lt;- outer(known.effect, known) + 
-outer(unknown.effect, unknown) + 
-2 # to get decent-sized counts 
+mat &lt;- outer(known.effect, known) + outer(unknown.effect, unknown) + 2 # to get decent-sized counts 
 
 counts &lt;- matrix(rpois(length(mat), lambda=2^mat), nrow=ngenes) 
 library(SummarizedExperiment) 
@@ -321,9 +412,7 @@ res &lt;- iasva(se, design, num.sv=5, permute = FALSE)
 # SV 5 Detected!
 # 
 # # of significant surrogate variables: 5
-plot(res$sv[,1], unknown) </code></pre>
-<p><img src="figure/reviewer2_sim.Rmd/sim1-1.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="r"><code>
+
 cor(res$sv[,1], unknown) # these SVs are not the unknown factor (correlation ~= 0) 
 # [1] 0.05699341
 cor(res$sv[,2], unknown) 
@@ -344,11 +433,10 @@ cor(res$sv[,3], known)
 cor(res$sv[,4], known) 
 # [1] 0.9982102
 cor(res$sv[,5], known) 
-# [1] -0.9934994</code></pre>
-</div>
-<div id="compare-to-just-naively-taking-the-first-pc-of-the-residual-matrix." class="section level2">
-<h2>Compare to just naively taking the first PC of the residual matrix.</h2>
-<pre class="r"><code>library(limma) 
+# [1] -0.9934994
+
+## Compare to just naively taking the first PC of the residual matrix. 
+library(limma) 
 # 
 # Attaching package: &#39;limma&#39;
 # The following object is masked from &#39;package:BiocGenerics&#39;:
@@ -356,42 +444,69 @@ cor(res$sv[,5], known)
 #     plotMA
 resid &lt;- removeBatchEffect(log(assay(se)+1), covariates=known) 
 pr.out &lt;- prcomp(t(resid), rank.=1) 
-plot(pr.out$x[,1], unknown) </code></pre>
-<p><img src="figure/reviewer2_sim.Rmd/firstPC_residual-1.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="r"><code>cor(pr.out$x[,1], unknown) # close to (-)1 
+abs(cor(pr.out$x[,1], unknown)) # close to 1 
 # [1] 0.9766822
-cor(pr.out$x[,1], known) # close to zero. 
-# [1] 2.35573e-17</code></pre>
-</div>
-<div id="compare-to-sva" class="section level2">
-<h2>Compare to SVA</h2>
-<pre class="r"><code>library(sva)
+abs(cor(pr.out$x[,1], known)) # close to zero. 
+# [1] 2.35573e-17
+
+## Compare to SVA
+library(sva)
 mod1 &lt;- model.matrix(~known)
 mod0 &lt;- cbind(mod1[,1])
 sva.res = svaseq(counts,mod1,mod0, n.sv=5)$sv
 # Number of significant surrogate variables is:  5 
 # Iteration (out of 5 ):1  2  3  4  5
-plot(sva.res[,1], unknown)</code></pre>
-<p><img src="figure/reviewer2_sim.Rmd/existing_methods-1.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="r"><code>plot(sva.res[,1], known)</code></pre>
-<p><img src="figure/reviewer2_sim.Rmd/existing_methods-2.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="r"><code>cor(sva.res[,1], unknown) # -0.55
-# [1] -0.5522043
-cor(sva.res[,1], known) # close to zero. 
-# [1] -0.04603016</code></pre>
+abs(cor(sva.res[,1], unknown)) # 0.55
+# [1] 0.5522043
+abs(cor(sva.res[,1], known)) # close to zero.
+# [1] 0.04603016
+
+hf.mat &lt;- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
+colnames(hf.mat) &lt;- c(&quot;HF&quot;, &quot;IASVA&quot;,&quot;PC1_Residual&quot;,&quot;SVA&quot;)
+corrplot.mixed(abs(cor(hf.mat)), tl.pos=&quot;lt&quot;)</code></pre>
+<p><img src="figure/reviewer2_sim.Rmd/sim1-1.png" width="576" style="display: block; margin: auto;" /></p>
+<details> <summary><em>Expand here to see past versions of sim1-1.png:</em></summary>
+<table style="border-collapse:separate; border-spacing:5px;">
+<thead>
+<tr>
+<th style="text-align:left;">
+Version
+</th>
+<th style="text-align:left;">
+Author
+</th>
+<th style="text-align:left;">
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+<a href="https://github.com/dleelab/iasvaExamples/blob/c241b04dac899407045051a04b7539237f4d183f/docs/figure/reviewer2_sim.Rmd/sim1-1.png" target="_blank">c241b04</a>
+</td>
+<td style="text-align:left;">
+dleelab
+</td>
+<td style="text-align:left;">
+2018-08-03
+</td>
+</tr>
+</tbody>
+</table>
+<p></details></p>
 </div>
-<div id="simulation-2" class="section level2">
-<h2>Simulation 2</h2>
+<div id="the-reviewer-2s-simulation-2-with-stronger-effect-size." class="section level2">
+<h2>The reviewer 2’s simulation #2 with stronger effect size.</h2>
 <pre class="r"><code>set.seed(10000) 
+
 known &lt;- runif(1000) 
 unknown &lt;- runif(1000) 
 
 ngenes &lt;- 5000 
 known.effect &lt;- rnorm(ngenes, sd=2) 
 unknown.effect &lt;- rnorm(ngenes, sd=2) 
-mat &lt;- outer(known.effect, known) + 
-outer(unknown.effect, unknown) + 
-2 # to get decent-sized counts 
+mat &lt;- outer(known.effect, known) + outer(unknown.effect, unknown) + 2 # to get decent-sized counts 
 
 counts &lt;- matrix(rpois(length(mat), lambda=2^mat), nrow=ngenes) 
 library(SummarizedExperiment) 
@@ -436,39 +551,76 @@ cor(res$sv[,4], known)
 cor(res$sv[,5], known) 
 # [1] -0.8898334
 
+## Compare to just naively taking the first PC of the residual matrix. 
+library(limma) 
+resid &lt;- removeBatchEffect(log(assay(se)+1), covariates=known) 
+pr.out &lt;- prcomp(t(resid), rank.=1) 
+abs(cor(pr.out$x[,1], unknown)) # close to 1 
+# [1] 0.9963041
+abs(cor(pr.out$x[,1], known)) # close to zero.
+# [1] 1.691586e-16
 
 # Compare to SVA
 library(sva)
 mod1 &lt;- model.matrix(~known)
 mod0 &lt;- cbind(mod1[,1])
-sva.res = svaseq(counts,mod1,mod0, n.sv=3)$sv
-# Number of significant surrogate variables is:  3 
+sva.res = svaseq(counts,mod1,mod0, n.sv=1)$sv
+# Number of significant surrogate variables is:  1 
 # Iteration (out of 5 ):1  2  3  4  5
-plot(sva.res[,1], unknown)</code></pre>
-<p><img src="figure/reviewer2_sim.Rmd/sim2-1.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="r"><code>plot(sva.res[,1], known)</code></pre>
-<p><img src="figure/reviewer2_sim.Rmd/sim2-2.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="r"><code>cor(sva.res[,1], unknown) # close to (-)1 
-# [1] 0.989786
-cor(sva.res[,2], unknown)
-# [1] 0.03346006
-cor(sva.res[,3], unknown) 
-# [1] -0.01770404
+abs(cor(sva.res[,1], unknown)) # close to 1 
+# [1] 0.9900321
+abs(cor(sva.res[,1], known)) # close to zero.
+# [1] 0.0007644251
 
-cor(sva.res[,1], known) # close to zero. 
-# [1] 0.0007217181
-cor(sva.res[,2], known)
-# [1] -0.04076436
-cor(sva.res[,3], known)
-# [1] -0.04114449</code></pre>
+hf.mat &lt;- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
+colnames(hf.mat) &lt;- c(&quot;HF&quot;, &quot;IASVA&quot;,&quot;PC1_Residual&quot;,&quot;SVA&quot;)
+corrplot.mixed(abs(cor(hf.mat)), tl.pos=&quot;lt&quot;)</code></pre>
+<p><img src="figure/reviewer2_sim.Rmd/sim2-1.png" width="576" style="display: block; margin: auto;" /></p>
+<details> <summary><em>Expand here to see past versions of sim2-1.png:</em></summary>
+<table style="border-collapse:separate; border-spacing:5px;">
+<thead>
+<tr>
+<th style="text-align:left;">
+Version
+</th>
+<th style="text-align:left;">
+Author
+</th>
+<th style="text-align:left;">
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+<a href="https://github.com/dleelab/iasvaExamples/blob/c241b04dac899407045051a04b7539237f4d183f/docs/figure/reviewer2_sim.Rmd/sim2-1.png" target="_blank">c241b04</a>
+</td>
+<td style="text-align:left;">
+dleelab
+</td>
+<td style="text-align:left;">
+2018-08-03
+</td>
+</tr>
+</tbody>
+</table>
+<p></details></p>
 </div>
-<div id="corrected-simulation-1-with-low-correlation-btw-known-and-hidden-factors" class="section level2">
-<h2>Corrected Simulation 1 with low correlation btw known and hidden factors</h2>
+<div id="several-issues-in-the-simulation-studies-suggested-by-the-reviewer-2" class="section level2">
+<h2>Several issues in the simulation studies suggested by the reviewer #2</h2>
+<p>We noticed several issues in these simulations. First, SVA or factor analysis based methods including IA-SVA are designed to estimate hidden variables with distinct levels (i.e., factors) or a transformation of factors. However, instead of simulating factors (e.g., a variable with two levels (1 and -1)) as typically done in such analyses1,2 (e.g., see <a href="http://jtleek.com/svaseq/simulateData.html" class="uri">http://jtleek.com/svaseq/simulateData.html</a> and Method section (Simulated data) of <a href="https://www.biorxiv.org/content/biorxiv/early/2017/10/27/200345.full.pdf" class="uri">https://www.biorxiv.org/content/biorxiv/early/2017/10/27/200345.full.pdf</a>), the reviewer simulated numeric vectors from a uniform distribution (e.g., runif(1000)) and used them as hidden variables. We note that this leads, like IA-SVA, SVA also to perform poorly in the simulation study (r = -0.55) (see <a href="https://dleelab.github.io/iasvaExamples/reviewer2_sim.html" class="uri">https://dleelab.github.io/iasvaExamples/reviewer2_sim.html</a>). Second, IA-SVA does not accept intercept column in the design matrix; therefore instead of design, design[,-1] should have been used in these simulations. Third, the reviewer simulated counts using a Poisson distribution (mean = variance); however, negative binomial or zero-inflated negative binomial is a more appropriate model to simulate high variability (mean &lt;&lt; variance) in bulk or single cell RNA-seq data. Fourth, even though only one hidden factor is simulated in the study, IA-SVA was forced to generate five hidden factors by setting the option ‘num.sv’ = 5. This leads IA-SVA to generate SV2-SV5, which are highly correlated SV1. To avoid this, we recommend users using the permutation procedure (by setting the default setting for option ‘permute’ (i.e, permute = TRUE) in ‘iasva’ function) or ‘fast_iasva’ function to determine the number of meaningful hidden factors. Lastly, to simulate a hidden factor with stronger effect sizes, the standard deviation (sd) in “unknown.effect &lt;- rnorm(ngenes, sd=2)” should be increased (e.g., sd=4); rather increasing the range of simulated factor values from “unknown &lt;- runif(1000, 0, 0.1)” to “unknown &lt;- runif(1000)”. We have repeated the simulation studies by taking into consideration these points below.</p>
+</div>
+<div id="corrected-simulation-with-low-correlation-btw-known-and-hidden-factors" class="section level2">
+<h2>Corrected simulation with low correlation btw known and hidden factors</h2>
 <pre class="r"><code># Setting up the known and unknown factors. 
 set.seed(10000) 
-sample.size &lt;- 100
-ngenes &lt;- 5000
-# CORRECTEION: Here, we simulate factors with two levels (0 or 1).
+
+## to reduce the computational burden, we reduced the sample size (# of cells) and # of genes.
+sample.size &lt;- 100 
+ngenes &lt;- 2000     
+
+# CORRECTEION: Here, we simulate factors with two levels (-1 or 1).
 factor.prop &lt;- 0.5
 flip.prob &lt;- 0.5 ## to make no correlation btw known and hidden factors
 known &lt;- c(rep(-1,each=sample.size*factor.prop),rep(1,each=sample.size-(sample.size*factor.prop)))
@@ -478,196 +630,295 @@ cor(known, unknown)
 # [1] -0.06030227
 
 # Generating Poisson count data from log-normal means. 
-ngenes &lt;- 5000 
-known.effect &lt;- rnorm(ngenes, sd=2) 
-unknown.effect &lt;- rnorm(ngenes, sd=2) ## CORRECTION: to make factor with weach effect size, we use 1 as SD here.
+# CORRECTION: to make factor with weak effect size, we use 1 as SD here.
+known.effect &lt;- rnorm(ngenes, sd=1) 
+unknown.effect &lt;- rnorm(ngenes, sd=1)
+
+# To make estimation of the hidden factor more challenging, here we ramdomly select 1500 (75%) and 1900 (95%) genes from each effect size vector and set their effect sizes as 0. That is, only 25% and 5% of genes are affected by the known and hidden factors, respectively. 
+known.effect[sample(1:ngenes, 1500, replace=FALSE)] &lt;- 0
+unknown.effect[sample(1:ngenes, 1900, replace=FALSE)] &lt;- 0
 
 mat &lt;- outer(known.effect, known) + outer(unknown.effect, unknown) + 2 # to get decent-sized counts 
-
 counts &lt;- matrix(rpois(length(mat), lambda=2^mat), nrow=ngenes)
 se &lt;- SummarizedExperiment(assays=counts) 
 
 # Running IA-SVA, version 0.99.3. 
 library(iasva) 
 design &lt;- model.matrix(~known) 
-## CORRECTION: IASVA doesn&#39;t accept the constant term of design matrix, so we use design[,-1] instead of design
-res &lt;- iasva(se, as.matrix(design[,-1]), num.sv=5, permute=FALSE) #num.p=20, threads=8) 
+
+# CORRECTION: IASVA doesn&#39;t accept the constant term of design matrix, so we use design[,-1] instead of design
+res &lt;- iasva(se, as.matrix(design[,-1]), threads=8) # iasva detected only one hidden factor.
 # IA-SVA running...
 # 
 # SV 1 Detected!
 # 
-# SV 2 Detected!
+# # of significant surrogate variables: 1
+# fast_iasva used here.
+res.fast &lt;- fast_iasva(se, as.matrix(design[,-1]))  # fast_iasva detected only one hidden factor.
+# fast IA-SVA running...
 # 
-# SV 3 Detected!
+# SV 1 Detected!
 # 
-# SV 4 Detected!
-# 
-# SV 5 Detected!
-# 
-# # of significant surrogate variables: 5
-plot(res$sv[,1], unknown) </code></pre>
-<p><img src="figure/reviewer2_sim.Rmd/sim1_corrected-1.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="r"><code>
-cor(res$sv[,1], unknown) # these SVs are not the unknown factor (correlation ~= 0) 
-# [1] -0.9978671
-cor(res$sv[,2], unknown) 
-# [1] -0.8506371
-cor(res$sv[,3], unknown) 
-# [1] -0.9022145
-cor(res$sv[,4], unknown) 
-# [1] -0.8897027
-cor(res$sv[,5], unknown) 
-# [1] 0.7309927
+# # of obtained surrogate variables: 1
 
-cor(res$sv[,1], known) # ... but are instead the known factor (correlation ~= +/-1) 
-# [1] 0.1251865
-cor(res$sv[,2], known) 
-# [1] 0.5759605
-cor(res$sv[,3], known) 
-# [1] 0.4847508
-cor(res$sv[,4], known) 
-# [1] 0.5043688
-cor(res$sv[,5], known) 
-# [1] -0.7206372
+#plot(res$sv[,1], unknown) 
+abs(cor(res$sv[,1], unknown)) ## absolute value of cor(SV1, unknown factor) = 0.9995
+# [1] 0.9972323
+abs(cor(res$sv[,1], known))   ## absolute value of cor(SV1, known factor) close to zero.
+# [1] 0.0707345
+
+#plot(res.fast$sv[,1], unknown) 
+abs(cor(res.fast$sv[,1], unknown)) ## absolute value of cor(SV1, unknown factor) = 0.9995
+# [1] 0.9972323
+abs(cor(res.fast$sv[,1], known))   ## absolute value of cor(SV1, known factor) close to zero.
+# [1] 0.0707345
+
 
 # Compare to just naively taking the first PC of the residual matrix. 
 library(limma) 
 resid &lt;- removeBatchEffect(log(assay(se)+1), covariates=known) 
 pr.out &lt;- prcomp(t(resid), rank.=1) 
-plot(pr.out$x[,1], unknown) </code></pre>
-<p><img src="figure/reviewer2_sim.Rmd/sim1_corrected-2.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="r"><code>cor(pr.out$x[,1], unknown) # close to (-)1 
-# [1] -0.9981718
-cor(pr.out$x[,1], known) # close to zero. 
-# [1] -7.096324e-18
+#plot(pr.out$x[,1], unknown) 
+abs(cor(pr.out$x[,1], unknown)) # close to 1 
+# [1] 0.9951611
+abs(cor(pr.out$x[,1], known)) # close to zero. 
+# [1] 4.020405e-16
 
 
 # Compare to SVA
 library(sva)
 mod1 &lt;- model.matrix(~known)
 mod0 &lt;- cbind(mod1[,1])
-sva.res = svaseq(counts,mod1,mod0, n.sv=3)$sv
-# Number of significant surrogate variables is:  3 
+sva.res = svaseq(counts,mod1,mod0)$sv
+# Number of significant surrogate variables is:  1 
 # Iteration (out of 5 ):1  2  3  4  5
-plot(sva.res[,1], unknown)</code></pre>
-<p><img src="figure/reviewer2_sim.Rmd/sim1_corrected-3.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="r"><code>plot(sva.res[,1], known)</code></pre>
-<p><img src="figure/reviewer2_sim.Rmd/sim1_corrected-4.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="r"><code>cor(sva.res[,1], unknown) # close to (-)1 
-# [1] 0.9976468
-cor(sva.res[,1], known) # close to zero. 
-# [1] 0.005334052</code></pre>
+#plot(sva.res[,1], unknown)
+abs(cor(sva.res[,1], unknown)) # close to 1 
+# [1] 0.9967295
+abs(cor(sva.res[,1], known)) # close to zero. 
+# [1] 0.05326845
+
+hf.mat &lt;- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
+colnames(hf.mat) &lt;- c(&quot;HF&quot;, &quot;IA-SVA&quot;,&quot;PC1_Residual&quot;,&quot;SVA&quot;)
+corrplot.mixed(abs(cor(hf.mat)), tl.pos=&quot;lt&quot;)</code></pre>
+<p><img src="figure/reviewer2_sim.Rmd/sim1_corrected-1.png" width="576" style="display: block; margin: auto;" /></p>
+<details> <summary><em>Expand here to see past versions of sim1_corrected-1.png:</em></summary>
+<table style="border-collapse:separate; border-spacing:5px;">
+<thead>
+<tr>
+<th style="text-align:left;">
+Version
+</th>
+<th style="text-align:left;">
+Author
+</th>
+<th style="text-align:left;">
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+<a href="https://github.com/dleelab/iasvaExamples/blob/c241b04dac899407045051a04b7539237f4d183f/docs/figure/reviewer2_sim.Rmd/sim1_corrected-1.png" target="_blank">c241b04</a>
+</td>
+<td style="text-align:left;">
+dleelab
+</td>
+<td style="text-align:left;">
+2018-08-03
+</td>
+</tr>
+</tbody>
+</table>
+<p></details></p>
 </div>
-<div id="corrected-simulation-1-with-high-correlation-btw-known-and-hidden-factors" class="section level2">
-<h2>Corrected Simulation 1 with high correlation btw known and hidden factors</h2>
+<div id="corrected-simulation-with-high-correlation-btw-known-and-hidden-factors-with-stronger-effect-sizes" class="section level2">
+<h2>Corrected Simulation with high correlation btw known and hidden factors with stronger effect sizes</h2>
+<p>Here, we simulated known and hidden factors are strongly correlated (r=0.7) and affect 25% and 5% of genes respectively. We also simulated stronger effect sizes by increasing sd from 1 to 2 when simulating effect sizes from normal distribution,“unknown.effect &lt;- rnorm(ngenes, sd=2)”.</p>
 <pre class="r"><code># Setting up the known and unknown factors. 
 set.seed(10000) 
-sample.size &lt;- 100 ##CORRECTION, to reduce the computational burden, we used smaller sample size.
-ngenes &lt;- 5000
-# CORRECTEION: Here, we simulate factors with two levels (0 or 1).
+
+# to reduce the computational burden, we reduced the sample size (# of cells) and # of genes.
+sample.size &lt;- 100 
+ngenes &lt;- 2000     
+
+# CORRECTEION: Here, we simulate factors with two levels (-1 or 1).
 factor.prop &lt;- 0.5
-flip.prob &lt;- 0.8 ## to make no correlation btw known and hidden factors
+flip.prob &lt;- 0.8 # to simulate high correlation btw known and hidden factors
 known &lt;- c(rep(-1,each=sample.size*factor.prop),rep(1,each=sample.size-(sample.size*factor.prop)))
 coinflip = rbinom(sample.size,size=1,prob=flip.prob)
 unknown = known*coinflip + -known*(1-coinflip)
-cor(known, unknown)
+cor(known, unknown) # correlation between known and unknown factors = 0.7
 # [1] 0.6940221
-
+ 
 # Generating Poisson count data from log-normal means. 
-ngenes &lt;- 5000 
+# CORRECTION: to make factor with stronger effect size, we use 2 as SD here.
 known.effect &lt;- rnorm(ngenes, sd=2) 
-unknown.effect &lt;- rnorm(ngenes, sd=2) ## CORRECTION: to make factor with weach effect size, we use 1 as SD here.
+unknown.effect &lt;- rnorm(ngenes, sd=2)
+
+# To make estimation of the hidden factor more challenging, here we ramdomly select 1500 (75%) and 1900 (95%) genes from each effect size vector and set their effect sizes as 0. That is, only 25% and 5% of genes are affected by the known and hidden factors, respectively. 
+known.effect[sample(1:ngenes, 1500, replace=FALSE)] &lt;- 0
+unknown.effect[sample(1:ngenes, 1900, replace=FALSE)] &lt;- 0
 
 mat &lt;- outer(known.effect, known) + outer(unknown.effect, unknown) + 2 # to get decent-sized counts 
-
 counts &lt;- matrix(rpois(length(mat), lambda=2^mat), nrow=ngenes)
 se &lt;- SummarizedExperiment(assays=counts) 
 
 # Running IA-SVA, version 0.99.3. 
 library(iasva) 
 design &lt;- model.matrix(~known) 
-## CORRECTION: IASVA doesn&#39;t accept the constant term of design matrix, so we use design[,-1] instead of design
-res &lt;- iasva(se, as.matrix(design[,-1]), num.sv=5, permute=FALSE) #num.p=20, threads=8) 
+
+# CORRECTION: IASVA doesn&#39;t accept the constant term of design matrix, so we use design[,-1] instead of design
+res &lt;- iasva(se, as.matrix(design[,-1]), threads=8) # iasva detected only one hidden factor.
 # IA-SVA running...
 # 
 # SV 1 Detected!
 # 
-# SV 2 Detected!
-# 
-# SV 3 Detected!
-# 
-# SV 4 Detected!
-# 
-# SV 5 Detected!
-# 
-# # of significant surrogate variables: 5
-
-plot(res$sv[,1], unknown) </code></pre>
-<p><img src="figure/reviewer2_sim.Rmd/sim1_corrected_high_corr-1.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="r"><code>cor(res$sv[,1], unknown) # accurately estimate the hidden factor (correlation ~= +/-1) 
-# [1] 0.9787781
-cor(res$sv[,2], unknown) 
-# [1] 0.9238274
-cor(res$sv[,3], unknown) 
-# [1] 0.9272298
-cor(res$sv[,4], unknown) 
-# [1] 0.9283517
-cor(res$sv[,5], unknown) 
-# [1] -0.8907946
-
-cor(res$sv[,1], known) # ... but are instead the known factor (correlation ~= +/-1) 
-# [1] 0.8263641
-cor(res$sv[,2], known) 
-# [1] 0.9164418
-cor(res$sv[,3], known) 
-# [1] 0.91305
-cor(res$sv[,4], known) 
-# [1] 0.9116705
-cor(res$sv[,5], known) 
-# [1] -0.9448956
-
-res1 &lt;- iasva(se, as.matrix(design[,-1]), threads=8) 
-# IA-SVA running...
+# # of significant surrogate variables: 1
+# fast_iasva used here.
+res.fast &lt;- fast_iasva(se, as.matrix(design[,-1]))  # fast_iasva detected only one hidden factor.
+# fast IA-SVA running...
 # 
 # SV 1 Detected!
 # 
-# SV 2 Detected!
-# 
-# # of significant surrogate variables: 2
-plot(res1$sv[,1], unknown) </code></pre>
-<p><img src="figure/reviewer2_sim.Rmd/sim1_corrected_high_corr-2.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="r"><code>cor(res1$sv[,1], unknown) # accurately estimate the hidden factor (correlation ~= +/-1) 
-# [1] 0.9787781
-cor(res1$sv[,2], unknown) # 
-# [1] -0.9238274
+# # of obtained surrogate variables: 1
 
-# Compare to just naively taking the first PC of the residual matrix. 
+#plot(res$sv[,1], unknown) 
+abs(cor(res$sv[,1], unknown)) ## absolute value of cor(SV1, unknown factor) = 0.9995
+# [1] 0.999519
+abs(cor(res$sv[,1], known))   ## absolute value of cor(SV1, known factor) close to 0.7.
+# [1] 0.7031551
+
+#plot(res.fast$sv[,1], unknown) 
+abs(cor(res.fast$sv[,1], unknown)) ## absolute value of cor(SV1, unknown factor) = 0.9995
+# [1] 0.999519
+abs(cor(res.fast$sv[,1], known))   ## absolute value of cor(SV1, known factor) close to 0.7.
+# [1] 0.7031551
+
+
+# Compare to just naively taking the first PC of the residual matrix.
 library(limma) 
 resid &lt;- removeBatchEffect(log(assay(se)+1), covariates=known) 
 pr.out &lt;- prcomp(t(resid), rank.=1) 
-plot(pr.out$x[,1], unknown) </code></pre>
-<p><img src="figure/reviewer2_sim.Rmd/sim1_corrected_high_corr-3.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="r"><code>cor(pr.out$x[,1], unknown) # close to (-)1 
-# [1] 0.719475
-cor(pr.out$x[,1], known) # close to zero. 
-# [1] 3.376059e-16
+#plot(pr.out$x[,1], unknown) 
+abs(cor(pr.out$x[,1], unknown)) # cor = 0.7 
+# [1] 0.7191922
+abs(cor(pr.out$x[,1], known)) # close to zero. 
+# [1] 3.721348e-16
 
 
 # Compare to SVA
 library(sva)
 mod1 &lt;- model.matrix(~known)
 mod0 &lt;- cbind(mod1[,1])
-sva.res = svaseq(counts,mod1,mod0, n.sv=3)$sv
-# Number of significant surrogate variables is:  3 
+sva.res = svaseq(counts,mod1,mod0)$sv
+# Number of significant surrogate variables is:  1 
 # Iteration (out of 5 ):1  2  3  4  5
-plot(sva.res[,1], unknown)</code></pre>
-<p><img src="figure/reviewer2_sim.Rmd/sim1_corrected_high_corr-4.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="r"><code>plot(sva.res[,1], known)</code></pre>
-<p><img src="figure/reviewer2_sim.Rmd/sim1_corrected_high_corr-5.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="r"><code>cor(sva.res[,1], unknown) # close to (-)1 
-# [1] 0.7275183
-cor(sva.res[,1], known) # close to zero. 
-# [1] 0.01369329</code></pre>
+#plot(sva.res[,1], unknown)
+abs(cor(sva.res[,1], unknown)) # cor = 0.7 
+# [1] 0.7306284
+abs(cor(sva.res[,1], known)) # close to zero.
+# [1] 0.07688679
+
+hf.mat &lt;- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
+colnames(hf.mat) &lt;- c(&quot;HF&quot;, &quot;IA-SVA&quot;,&quot;PC1_Residual&quot;,&quot;SVA&quot;)
+corrplot.mixed(abs(cor(hf.mat)), tl.pos=&quot;lt&quot;)</code></pre>
+<p><img src="figure/reviewer2_sim.Rmd/sim_corrected_high_corr-1.png" width="576" style="display: block; margin: auto;" /></p>
+</div>
+<div id="more-challenging-scenario." class="section level2">
+<h2>More challenging scenario.</h2>
+<p>Here, we simulated the known and hidden factors to affect only 100 (5%) and 20 (1%) genes respectively. We simulated the 20 genes affected by the hidden factor to be also affected by the known factor. Similarly, the two factors are highly correlated (r=0.7).</p>
+<pre class="r"><code># Setting up the known and unknown factors. 
+set.seed(10000) 
+
+# to reduce the computational burden, we reduced the sample size (# of cells) and # of genes.
+sample.size &lt;- 100 
+ngenes &lt;- 2000     
+
+# CORRECTEION: Here, we simulate factors with two levels (-1 or 1).
+factor.prop &lt;- 0.5
+flip.prob &lt;- 0.8 # to simulate high correlation btw known and hidden factors
+known &lt;- c(rep(-1,each=sample.size*factor.prop),rep(1,each=sample.size-(sample.size*factor.prop)))
+coinflip = rbinom(sample.size,size=1,prob=flip.prob)
+unknown = known*coinflip + -known*(1-coinflip)
+cor(known, unknown) # correlation between known and unknown factors = 0.7
+# [1] 0.6940221
+ 
+# Generating Poisson count data from log-normal means. 
+# CORRECTION: to make factor with stronger effect size, we use 2 as SD here.
+known.effect &lt;- rnorm(ngenes, sd=2) 
+unknown.effect &lt;- rnorm(ngenes, sd=2)
+
+# To make estimation of the hidden factor more challenging, here we select 1900 (95%) and 1980 (1%) genes from each effect size vector and set their effect sizes as 0. That is, 5% and 1% of genes are affected by the known and hidden factors, respectively. All 20 genes affected by the hidden factor are affected by the known factor. 
+
+known.effect[1:1900] &lt;- 0
+unknown.effect[1:1980] &lt;- 0
+
+mat &lt;- outer(known.effect, known) + outer(unknown.effect, unknown) + 2 # to get decent-sized counts 
+counts &lt;- matrix(rpois(length(mat), lambda=2^mat), nrow=ngenes)
+se &lt;- SummarizedExperiment(assays=counts) 
+
+# Running IA-SVA, version 0.99.3. 
+library(iasva) 
+design &lt;- model.matrix(~known) 
+
+# CORRECTION: IASVA doesn&#39;t accept the constant term of design matrix, so we use design[,-1] instead of design
+res &lt;- iasva(se, as.matrix(design[,-1]), threads=8) # iasva detected only one hidden factor.
+# IA-SVA running...
+# 
+# SV 1 Detected!
+# 
+# # of significant surrogate variables: 1
+# fast_iasva used here.
+res.fast &lt;- fast_iasva(se, as.matrix(design[,-1]), pct.cutoff = 2)  # fast_iasva detected only one hidden factor.
+# fast IA-SVA running...
+# 
+# SV 1 Detected!
+# 
+# # of obtained surrogate variables: 1
+
+#plot(res$sv[,1], unknown) 
+abs(cor(res$sv[,1], unknown)) ## absolute value of cor(SV1, unknown factor) = 0.9995
+# [1] 0.9831191
+abs(cor(res$sv[,1], known))   ## absolute value of cor(SV1, known factor) close to 0.7.
+# [1] 0.8073574
+
+#plot(res.fast$sv[,1], unknown) 
+abs(cor(res.fast$sv[,1], unknown)) ## absolute value of cor(SV1, unknown factor) = 0.9995
+# [1] 0.9831191
+abs(cor(res.fast$sv[,1], known))   ## absolute value of cor(SV1, known factor) close to 0.7.
+# [1] 0.8073574
+
+
+# Compare to just naively taking the first PC of the residual matrix.
+library(limma) 
+resid &lt;- removeBatchEffect(log(assay(se)+1), covariates=known) 
+pr.out &lt;- prcomp(t(resid), rank.=1) 
+#plot(pr.out$x[,1], unknown) 
+abs(cor(pr.out$x[,1], unknown)) # cor = 0.7 
+# [1] 0.7114086
+abs(cor(pr.out$x[,1], known)) # close to zero. 
+# [1] 3.193674e-16
+
+
+# Compare to SVA
+library(sva)
+mod1 &lt;- model.matrix(~known)
+mod0 &lt;- cbind(mod1[,1])
+sva.res = svaseq(counts,mod1,mod0)$sv
+# Number of significant surrogate variables is:  1 
+# Iteration (out of 5 ):1  2  3  4  5
+#plot(sva.res[,1], unknown)
+abs(cor(sva.res[,1], unknown)) # cor = 0.7 
+# [1] 0.6006951
+abs(cor(sva.res[,1], known)) # close to zero.
+# [1] 0.09633978
+
+hf.mat &lt;- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
+colnames(hf.mat) &lt;- c(&quot;HF&quot;, &quot;IA-SVA&quot;,&quot;PC1_Residual&quot;,&quot;SVA&quot;)
+corrplot.mixed(abs(cor(hf.mat)), tl.pos=&quot;lt&quot;)</code></pre>
+<p><img src="figure/reviewer2_sim.Rmd/sim_corrected_high_corr_challenging-1.png" width="576" style="display: block; margin: auto;" /></p>
 </div>
 <div id="session-information" class="section level2">
 <h2>Session information</h2>
@@ -688,30 +939,31 @@ cor(sva.res[,1], known) # close to zero.
 # [8] methods   base     
 # 
 # other attached packages:
-#  [1] limma_3.36.2                SummarizedExperiment_1.10.1
-#  [3] DelayedArray_0.6.1          matrixStats_0.53.1         
-#  [5] Biobase_2.40.0              GenomicRanges_1.32.3       
-#  [7] GenomeInfoDb_1.16.0         IRanges_2.14.10            
-#  [9] S4Vectors_0.18.3            BiocGenerics_0.26.0        
-# [11] sva_3.28.0                  BiocParallel_1.14.2        
-# [13] genefilter_1.62.0           mgcv_1.8-23                
-# [15] nlme_3.1-137                iasva_0.99.3               
+#  [1] limma_3.36.2                corrplot_0.84              
+#  [3] SummarizedExperiment_1.10.1 DelayedArray_0.6.1         
+#  [5] matrixStats_0.53.1          Biobase_2.40.0             
+#  [7] GenomicRanges_1.32.3        GenomeInfoDb_1.16.0        
+#  [9] IRanges_2.14.10             S4Vectors_0.18.3           
+# [11] BiocGenerics_0.26.0         sva_3.28.0                 
+# [13] BiocParallel_1.14.2         genefilter_1.62.0          
+# [15] mgcv_1.8-23                 nlme_3.1-137               
+# [17] iasva_0.99.3               
 # 
 # loaded via a namespace (and not attached):
-#  [1] Rcpp_0.12.17           compiler_3.5.0         git2r_0.21.0          
-#  [4] workflowr_1.0.1        XVector_0.20.0         R.methodsS3_1.7.1     
-#  [7] R.utils_2.6.0          bitops_1.0-6           tools_3.5.0           
-# [10] zlibbioc_1.26.0        bit_1.1-14             digest_0.6.15         
-# [13] memoise_1.1.0          RSQLite_2.1.1          annotate_1.58.0       
-# [16] evaluate_0.10.1        lattice_0.20-35        Matrix_1.2-14         
-# [19] DBI_1.0.0              yaml_2.1.19            GenomeInfoDbData_1.1.0
-# [22] stringr_1.3.1          knitr_1.20             cluster_2.0.7-1       
-# [25] bit64_0.9-7            rprojroot_1.3-2        grid_3.5.0            
-# [28] AnnotationDbi_1.42.1   survival_2.42-3        XML_3.98-1.11         
-# [31] rmarkdown_1.9          irlba_2.3.2            blob_1.1.1            
-# [34] magrittr_1.5           whisker_0.3-2          splines_3.5.0         
-# [37] backports_1.1.2        htmltools_0.3.6        xtable_1.8-2          
-# [40] stringi_1.2.2          RCurl_1.95-4.10        R.oo_1.22.0</code></pre>
+#  [1] splines_3.5.0          lattice_0.20-35        htmltools_0.3.6       
+#  [4] yaml_2.1.19            blob_1.1.1             XML_3.98-1.11         
+#  [7] survival_2.42-3        R.oo_1.22.0            DBI_1.0.0             
+# [10] R.utils_2.6.0          bit64_0.9-7            GenomeInfoDbData_1.1.0
+# [13] stringr_1.3.1          zlibbioc_1.26.0        workflowr_1.0.1       
+# [16] R.methodsS3_1.7.1      evaluate_0.10.1        memoise_1.1.0         
+# [19] knitr_1.20             irlba_2.3.2            AnnotationDbi_1.42.1  
+# [22] Rcpp_0.12.17           xtable_1.8-2           backports_1.1.2       
+# [25] annotate_1.58.0        XVector_0.20.0         bit_1.1-14            
+# [28] digest_0.6.15          stringi_1.2.2          grid_3.5.0            
+# [31] rprojroot_1.3-2        tools_3.5.0            bitops_1.0-6          
+# [34] magrittr_1.5           RCurl_1.95-4.10        RSQLite_2.1.1         
+# [37] cluster_2.0.7-1        whisker_0.3-2          Matrix_1.2-14         
+# [40] rmarkdown_1.9          git2r_0.21.0           compiler_3.5.0</code></pre>
 </div>
 
 <!-- Adjust MathJax settings so that all math formulae are shown using
