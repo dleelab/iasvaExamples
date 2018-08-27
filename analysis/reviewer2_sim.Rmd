@@ -348,7 +348,7 @@ corrplot.mixed(abs(cor(hf.mat5)), tl.pos="lt")
 ```
 ```{r all_figures, fig.width=3, fig.height=4.5}
 #par(oma = c(0, 2, 2, 2))
-pdf("output/FigureL8.pdf", width=6,height=9)
+pdf("output/FigureL2.pdf", width=6,height=9)
 par(mfrow=c(3,2))
 corrplot.mixed(abs(cor(hf.mat1)), tl.pos="lt")
 corrplot.mixed(abs(cor(hf.mat2)), tl.pos="lt")
