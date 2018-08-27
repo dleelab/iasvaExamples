@@ -68,10 +68,9 @@ sva.res = svaseq(counts,mod1,mod0, n.sv=5)$sv
 abs(cor(sva.res[,1], unknown)) # 0.55
 abs(cor(sva.res[,1], known)) # close to zero.
 
-hf.mat <- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
-colnames(hf.mat) <- c("HF", "IASVA","PC1_Residual","SVA")
-corrplot.mixed(abs(cor(hf.mat)), tl.pos="lt")
-
+hf.mat1 <- cbind(known, unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
+colnames(hf.mat1) <- c("KF","HF","IASVA","PC1_Residual","SVA")
+corrplot.mixed(abs(cor(hf.mat1)), tl.pos="lt")
 ```
 
 
@@ -122,9 +121,9 @@ sva.res = svaseq(counts,mod1,mod0, n.sv=1)$sv
 abs(cor(sva.res[,1], unknown)) # close to 1 
 abs(cor(sva.res[,1], known)) # close to zero.
 
-hf.mat <- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
-colnames(hf.mat) <- c("HF", "IASVA","PC1_Residual","SVA")
-corrplot.mixed(abs(cor(hf.mat)), tl.pos="lt")
+hf.mat2 <- cbind(known, unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
+colnames(hf.mat2) <- c("KF","HF","IASVA","PC1_Residual","SVA")
+corrplot.mixed(abs(cor(hf.mat2)), tl.pos="lt")
 ```
 
 
@@ -197,9 +196,9 @@ sva.res = svaseq(counts,mod1,mod0)$sv
 abs(cor(sva.res[,1], unknown)) # close to 1 
 abs(cor(sva.res[,1], known)) # close to zero. 
 
-hf.mat <- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
-colnames(hf.mat) <- c("HF", "IA-SVA","PC1_Residual","SVA")
-corrplot.mixed(abs(cor(hf.mat)), tl.pos="lt")
+hf.mat3 <- cbind(known, unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
+colnames(hf.mat3) <- c("KF","HF","IASVA","PC1_Residual","SVA")
+corrplot.mixed(abs(cor(hf.mat3)), tl.pos="lt")
 ```
 
 ## Corrected Simulation with high correlation btw known and hidden factors with stronger effect sizes
@@ -269,9 +268,9 @@ sva.res = svaseq(counts,mod1,mod0)$sv
 abs(cor(sva.res[,1], unknown)) # cor = 0.7 
 abs(cor(sva.res[,1], known)) # close to zero.
 
-hf.mat <- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
-colnames(hf.mat) <- c("HF", "IA-SVA","PC1_Residual","SVA")
-corrplot.mixed(abs(cor(hf.mat)), tl.pos="lt")
+hf.mat4 <- cbind(known, unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
+colnames(hf.mat4) <- c("KF","HF","IASVA","PC1_Residual","SVA")
+corrplot.mixed(abs(cor(hf.mat4)), tl.pos="lt")
 ```
 
 
@@ -343,7 +342,18 @@ sva.res = svaseq(counts,mod1,mod0)$sv
 abs(cor(sva.res[,1], unknown)) # cor = 0.7 
 abs(cor(sva.res[,1], known)) # close to zero.
 
-hf.mat <- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
-colnames(hf.mat) <- c("HF", "IA-SVA","PC1_Residual","SVA")
-corrplot.mixed(abs(cor(hf.mat)), tl.pos="lt")
+hf.mat5 <- cbind(known, unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
+colnames(hf.mat5) <- c("KF","HF","IASVA","PC1_Residual","SVA")
+corrplot.mixed(abs(cor(hf.mat5)), tl.pos="lt")
+```
+```{r all_figures, fig.width=3, fig.height=4.5}
+#par(oma = c(0, 2, 2, 2))
+pdf("output/FigureL8.pdf", width=6,height=9)
+par(mfrow=c(3,2))
+corrplot.mixed(abs(cor(hf.mat1)), tl.pos="lt")
+corrplot.mixed(abs(cor(hf.mat2)), tl.pos="lt")
+corrplot.mixed(abs(cor(hf.mat3)), tl.pos="lt")
+corrplot.mixed(abs(cor(hf.mat4)), tl.pos="lt")
+corrplot.mixed(abs(cor(hf.mat5)), tl.pos="lt")
+dev.off()
 ```
