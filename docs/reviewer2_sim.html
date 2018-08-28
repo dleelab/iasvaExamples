@@ -11,7 +11,7 @@
 
 <meta name="author" content="Donghyung Lee" />
 
-<meta name="date" content="2018-08-22" />
+<meta name="date" content="2018-08-27" />
 
 <title>Reviewer 2 Simulation</title>
 
@@ -209,7 +209,7 @@ div.section {
 
 <h1 class="title toc-ignore">Reviewer 2 Simulation</h1>
 <h4 class="author"><em>Donghyung Lee</em></h4>
-<h4 class="date"><em>2018-08-22</em></h4>
+<h4 class="date"><em>2018-08-27</em></h4>
 
 </div>
 
@@ -225,7 +225,7 @@ div.section {
 </ul>
 </div>
 
-<p><strong>Last updated:</strong> 2018-08-22</p>
+<p><strong>Last updated:</strong> 2018-08-27</p>
 <strong>workflowr checks:</strong> <small>(Click a bullet for more information)</small>
 <ul>
 <li>
@@ -249,7 +249,7 @@ div.section {
 </details>
 </li>
 <li>
-<p><details> <summary> <strong style="color:blue;">✔</strong> <strong>Repository version:</strong> <a href="https://github.com/dleelab/iasvaExamples/tree/17ebb0364f4b76ba44d101be572d065b84338d5f" target="_blank">17ebb03</a> </summary></p>
+<p><details> <summary> <strong style="color:blue;">✔</strong> <strong>Repository version:</strong> <a href="https://github.com/dleelab/iasvaExamples/tree/492eafb937bf0a4cccd4a4bd2d798bd400d644f7" target="_blank">492eafb</a> </summary></p>
 Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility. The version displayed above was the version of the Git repository at the time these results were generated. <br><br> Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
 <pre><code>
 Ignored files:
@@ -257,8 +257,11 @@ Ignored files:
     Ignored:    .Rhistory
     Ignored:    .Rproj.user/
     Ignored:    data/.DS_Store
+    Ignored:    docs/.DS_Store
+    Ignored:    docs/figure/.DS_Store
     Ignored:    inst/.DS_Store
     Ignored:    inst/doc/.DS_Store
+    Ignored:    output/.DS_Store
     Ignored:    vignettes/.DS_Store
 
 </code></pre>
@@ -288,6 +291,57 @@ Message
 </tr>
 </thead>
 <tbody>
+<tr>
+<td style="text-align:left;">
+Rmd
+</td>
+<td style="text-align:left;">
+<a href="https://github.com/dleelab/iasvaExamples/blob/492eafb937bf0a4cccd4a4bd2d798bd400d644f7/analysis/reviewer2_sim.Rmd" target="_blank">492eafb</a>
+</td>
+<td style="text-align:left;">
+dleelab
+</td>
+<td style="text-align:left;">
+2018-08-27
+</td>
+<td style="text-align:left;">
+figure number changed
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Rmd
+</td>
+<td style="text-align:left;">
+<a href="https://github.com/dleelab/iasvaExamples/blob/e042edfba8fbe7a06d2b01573c03579ff6d81cd0/analysis/reviewer2_sim.Rmd" target="_blank">e042edf</a>
+</td>
+<td style="text-align:left;">
+dleelab
+</td>
+<td style="text-align:left;">
+2018-08-27
+</td>
+<td style="text-align:left;">
+figure updated
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+html
+</td>
+<td style="text-align:left;">
+<a href="https://cdn.rawgit.com/dleelab/iasvaExamples/5e29c04506c1303bb96adfec18e01215d3c089ff/docs/reviewer2_sim.html" target="_blank">5e29c04</a>
+</td>
+<td style="text-align:left;">
+dleelab
+</td>
+<td style="text-align:left;">
+2018-08-22
+</td>
+<td style="text-align:left;">
+reviewer2 sim updated.
+</td>
+</tr>
 <tr>
 <td style="text-align:left;">
 Rmd
@@ -461,9 +515,9 @@ abs(cor(sva.res[,1], unknown)) # 0.55
 abs(cor(sva.res[,1], known)) # close to zero.
 # [1] 0.04603016
 
-hf.mat &lt;- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
-colnames(hf.mat) &lt;- c(&quot;HF&quot;, &quot;IASVA&quot;,&quot;PC1_Residual&quot;,&quot;SVA&quot;)
-corrplot.mixed(abs(cor(hf.mat)), tl.pos=&quot;lt&quot;)</code></pre>
+hf.mat1 &lt;- cbind(known, unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
+colnames(hf.mat1) &lt;- c(&quot;KF&quot;,&quot;HF&quot;,&quot;IASVA&quot;,&quot;PC1_Residual&quot;,&quot;SVA&quot;)
+corrplot.mixed(abs(cor(hf.mat1)), tl.pos=&quot;lt&quot;)</code></pre>
 <p><img src="figure/reviewer2_sim.Rmd/sim1-1.png" width="576" style="display: block; margin: auto;" /></p>
 <details> <summary><em>Expand here to see past versions of sim1-1.png:</em></summary>
 <table style="border-collapse:separate; border-spacing:5px;">
@@ -481,6 +535,17 @@ Date
 </tr>
 </thead>
 <tbody>
+<tr>
+<td style="text-align:left;">
+<a href="https://github.com/dleelab/iasvaExamples/blob/5e29c04506c1303bb96adfec18e01215d3c089ff/docs/figure/reviewer2_sim.Rmd/sim1-1.png" target="_blank">5e29c04</a>
+</td>
+<td style="text-align:left;">
+dleelab
+</td>
+<td style="text-align:left;">
+2018-08-22
+</td>
+</tr>
 <tr>
 <td style="text-align:left;">
 <a href="https://github.com/dleelab/iasvaExamples/blob/c241b04dac899407045051a04b7539237f4d183f/docs/figure/reviewer2_sim.Rmd/sim1-1.png" target="_blank">c241b04</a>
@@ -572,9 +637,9 @@ abs(cor(sva.res[,1], unknown)) # close to 1
 abs(cor(sva.res[,1], known)) # close to zero.
 # [1] 0.0007644251
 
-hf.mat &lt;- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
-colnames(hf.mat) &lt;- c(&quot;HF&quot;, &quot;IASVA&quot;,&quot;PC1_Residual&quot;,&quot;SVA&quot;)
-corrplot.mixed(abs(cor(hf.mat)), tl.pos=&quot;lt&quot;)</code></pre>
+hf.mat2 &lt;- cbind(known, unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
+colnames(hf.mat2) &lt;- c(&quot;KF&quot;,&quot;HF&quot;,&quot;IASVA&quot;,&quot;PC1_Residual&quot;,&quot;SVA&quot;)
+corrplot.mixed(abs(cor(hf.mat2)), tl.pos=&quot;lt&quot;)</code></pre>
 <p><img src="figure/reviewer2_sim.Rmd/sim2-1.png" width="576" style="display: block; margin: auto;" /></p>
 <details> <summary><em>Expand here to see past versions of sim2-1.png:</em></summary>
 <table style="border-collapse:separate; border-spacing:5px;">
@@ -592,6 +657,17 @@ Date
 </tr>
 </thead>
 <tbody>
+<tr>
+<td style="text-align:left;">
+<a href="https://github.com/dleelab/iasvaExamples/blob/5e29c04506c1303bb96adfec18e01215d3c089ff/docs/figure/reviewer2_sim.Rmd/sim2-1.png" target="_blank">5e29c04</a>
+</td>
+<td style="text-align:left;">
+dleelab
+</td>
+<td style="text-align:left;">
+2018-08-22
+</td>
+</tr>
 <tr>
 <td style="text-align:left;">
 <a href="https://github.com/dleelab/iasvaExamples/blob/c241b04dac899407045051a04b7539237f4d183f/docs/figure/reviewer2_sim.Rmd/sim2-1.png" target="_blank">c241b04</a>
@@ -698,9 +774,9 @@ abs(cor(sva.res[,1], unknown)) # close to 1
 abs(cor(sva.res[,1], known)) # close to zero. 
 # [1] 0.05326845
 
-hf.mat &lt;- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
-colnames(hf.mat) &lt;- c(&quot;HF&quot;, &quot;IA-SVA&quot;,&quot;PC1_Residual&quot;,&quot;SVA&quot;)
-corrplot.mixed(abs(cor(hf.mat)), tl.pos=&quot;lt&quot;)</code></pre>
+hf.mat3 &lt;- cbind(known, unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
+colnames(hf.mat3) &lt;- c(&quot;KF&quot;,&quot;HF&quot;,&quot;IASVA&quot;,&quot;PC1_Residual&quot;,&quot;SVA&quot;)
+corrplot.mixed(abs(cor(hf.mat3)), tl.pos=&quot;lt&quot;)</code></pre>
 <p><img src="figure/reviewer2_sim.Rmd/sim1_corrected-1.png" width="576" style="display: block; margin: auto;" /></p>
 <details> <summary><em>Expand here to see past versions of sim1_corrected-1.png:</em></summary>
 <table style="border-collapse:separate; border-spacing:5px;">
@@ -718,6 +794,17 @@ Date
 </tr>
 </thead>
 <tbody>
+<tr>
+<td style="text-align:left;">
+<a href="https://github.com/dleelab/iasvaExamples/blob/5e29c04506c1303bb96adfec18e01215d3c089ff/docs/figure/reviewer2_sim.Rmd/sim1_corrected-1.png" target="_blank">5e29c04</a>
+</td>
+<td style="text-align:left;">
+dleelab
+</td>
+<td style="text-align:left;">
+2018-08-22
+</td>
+</tr>
 <tr>
 <td style="text-align:left;">
 <a href="https://github.com/dleelab/iasvaExamples/blob/c241b04dac899407045051a04b7539237f4d183f/docs/figure/reviewer2_sim.Rmd/sim1_corrected-1.png" target="_blank">c241b04</a>
@@ -821,10 +908,40 @@ abs(cor(sva.res[,1], unknown)) # cor = 0.7
 abs(cor(sva.res[,1], known)) # close to zero.
 # [1] 0.07688679
 
-hf.mat &lt;- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
-colnames(hf.mat) &lt;- c(&quot;HF&quot;, &quot;IA-SVA&quot;,&quot;PC1_Residual&quot;,&quot;SVA&quot;)
-corrplot.mixed(abs(cor(hf.mat)), tl.pos=&quot;lt&quot;)</code></pre>
+hf.mat4 &lt;- cbind(known, unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
+colnames(hf.mat4) &lt;- c(&quot;KF&quot;,&quot;HF&quot;,&quot;IASVA&quot;,&quot;PC1_Residual&quot;,&quot;SVA&quot;)
+corrplot.mixed(abs(cor(hf.mat4)), tl.pos=&quot;lt&quot;)</code></pre>
 <p><img src="figure/reviewer2_sim.Rmd/sim_corrected_high_corr-1.png" width="576" style="display: block; margin: auto;" /></p>
+<details> <summary><em>Expand here to see past versions of sim_corrected_high_corr-1.png:</em></summary>
+<table style="border-collapse:separate; border-spacing:5px;">
+<thead>
+<tr>
+<th style="text-align:left;">
+Version
+</th>
+<th style="text-align:left;">
+Author
+</th>
+<th style="text-align:left;">
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+<a href="https://github.com/dleelab/iasvaExamples/blob/5e29c04506c1303bb96adfec18e01215d3c089ff/docs/figure/reviewer2_sim.Rmd/sim_corrected_high_corr-1.png" target="_blank">5e29c04</a>
+</td>
+<td style="text-align:left;">
+dleelab
+</td>
+<td style="text-align:left;">
+2018-08-22
+</td>
+</tr>
+</tbody>
+</table>
+<p></details></p>
 </div>
 <div id="more-challenging-scenario." class="section level2">
 <h2>More challenging scenario.</h2>
@@ -915,10 +1032,51 @@ abs(cor(sva.res[,1], unknown)) # cor = 0.7
 abs(cor(sva.res[,1], known)) # close to zero.
 # [1] 0.09633978
 
-hf.mat &lt;- cbind(unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
-colnames(hf.mat) &lt;- c(&quot;HF&quot;, &quot;IA-SVA&quot;,&quot;PC1_Residual&quot;,&quot;SVA&quot;)
-corrplot.mixed(abs(cor(hf.mat)), tl.pos=&quot;lt&quot;)</code></pre>
+hf.mat5 &lt;- cbind(known, unknown, res$sv[,1], pr.out$x[,1], sva.res[,1])
+colnames(hf.mat5) &lt;- c(&quot;KF&quot;,&quot;HF&quot;,&quot;IASVA&quot;,&quot;PC1_Residual&quot;,&quot;SVA&quot;)
+corrplot.mixed(abs(cor(hf.mat5)), tl.pos=&quot;lt&quot;)</code></pre>
 <p><img src="figure/reviewer2_sim.Rmd/sim_corrected_high_corr_challenging-1.png" width="576" style="display: block; margin: auto;" /></p>
+<details> <summary><em>Expand here to see past versions of sim_corrected_high_corr_challenging-1.png:</em></summary>
+<table style="border-collapse:separate; border-spacing:5px;">
+<thead>
+<tr>
+<th style="text-align:left;">
+Version
+</th>
+<th style="text-align:left;">
+Author
+</th>
+<th style="text-align:left;">
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+<a href="https://github.com/dleelab/iasvaExamples/blob/5e29c04506c1303bb96adfec18e01215d3c089ff/docs/figure/reviewer2_sim.Rmd/sim_corrected_high_corr_challenging-1.png" target="_blank">5e29c04</a>
+</td>
+<td style="text-align:left;">
+dleelab
+</td>
+<td style="text-align:left;">
+2018-08-22
+</td>
+</tr>
+</tbody>
+</table>
+<p></details></p>
+<pre class="r"><code>#par(oma = c(0, 2, 2, 2))
+pdf(&quot;output/FigureL2.pdf&quot;, width=6,height=9)
+par(mfrow=c(3,2))
+corrplot.mixed(abs(cor(hf.mat1)), tl.pos=&quot;lt&quot;)
+corrplot.mixed(abs(cor(hf.mat2)), tl.pos=&quot;lt&quot;)
+corrplot.mixed(abs(cor(hf.mat3)), tl.pos=&quot;lt&quot;)
+corrplot.mixed(abs(cor(hf.mat4)), tl.pos=&quot;lt&quot;)
+corrplot.mixed(abs(cor(hf.mat5)), tl.pos=&quot;lt&quot;)
+dev.off()
+# quartz_off_screen 
+#                 2</code></pre>
 </div>
 <div id="session-information" class="section level2">
 <h2>Session information</h2>
@@ -947,23 +1105,24 @@ corrplot.mixed(abs(cor(hf.mat)), tl.pos=&quot;lt&quot;)</code></pre>
 # [11] BiocGenerics_0.26.0         sva_3.28.0                 
 # [13] BiocParallel_1.14.2         genefilter_1.62.0          
 # [15] mgcv_1.8-23                 nlme_3.1-137               
-# [17] iasva_0.99.3               
+# [17] iasva_0.99.3                workflowr_1.0.1            
+# [19] rmarkdown_1.9              
 # 
 # loaded via a namespace (and not attached):
 #  [1] splines_3.5.0          lattice_0.20-35        htmltools_0.3.6       
 #  [4] yaml_2.1.19            blob_1.1.1             XML_3.98-1.11         
 #  [7] survival_2.42-3        R.oo_1.22.0            DBI_1.0.0             
 # [10] R.utils_2.6.0          bit64_0.9-7            GenomeInfoDbData_1.1.0
-# [13] stringr_1.3.1          zlibbioc_1.26.0        workflowr_1.0.1       
-# [16] R.methodsS3_1.7.1      evaluate_0.10.1        memoise_1.1.0         
-# [19] knitr_1.20             irlba_2.3.2            AnnotationDbi_1.42.1  
-# [22] Rcpp_0.12.17           xtable_1.8-2           backports_1.1.2       
-# [25] annotate_1.58.0        XVector_0.20.0         bit_1.1-14            
-# [28] digest_0.6.15          stringi_1.2.2          grid_3.5.0            
-# [31] rprojroot_1.3-2        tools_3.5.0            bitops_1.0-6          
-# [34] magrittr_1.5           RCurl_1.95-4.10        RSQLite_2.1.1         
-# [37] cluster_2.0.7-1        whisker_0.3-2          Matrix_1.2-14         
-# [40] rmarkdown_1.9          git2r_0.21.0           compiler_3.5.0</code></pre>
+# [13] stringr_1.3.1          zlibbioc_1.26.0        R.methodsS3_1.7.1     
+# [16] evaluate_0.10.1        memoise_1.1.0          knitr_1.20            
+# [19] irlba_2.3.2            AnnotationDbi_1.42.1   Rcpp_0.12.17          
+# [22] xtable_1.8-2           backports_1.1.2        annotate_1.58.0       
+# [25] XVector_0.20.0         bit_1.1-14             digest_0.6.15         
+# [28] stringi_1.2.2          grid_3.5.0             rprojroot_1.3-2       
+# [31] tools_3.5.0            bitops_1.0-6           magrittr_1.5          
+# [34] RCurl_1.95-4.10        RSQLite_2.1.1          cluster_2.0.7-1       
+# [37] whisker_0.3-2          Matrix_1.2-14          git2r_0.21.0          
+# [40] compiler_3.5.0</code></pre>
 </div>
 
 <!-- Adjust MathJax settings so that all math formulae are shown using
