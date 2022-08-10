@@ -1,5 +1,6 @@
 # R data package for IA-SVA 
-This R package includes various data examples for IA-SVA.
+This R package includes various data examples for [IA-SVA, Lee et. al. (2018)](https://www.nature.com/articles/s41598-018-35365-9). All data simulation code and results used in the manuscript are publicly available at [iasvaExample website](https://dleelab.github.io/iasvaExamples/).
+
 
 ## Installation
 
